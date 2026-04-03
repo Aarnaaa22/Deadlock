@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Deadlock Visualizer — by Aarna</title>
+  <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <!-- animated background canvas -->
+  <canvas id="bg-canvas"></canvas>
+
+  <!-- HEADER -->
+  <header class="site-header">
+    <div class="header-left">
+      <span class="logo-icon">⬡</span>
+      <div>
+        <h1 class="site-title">Deadlock Visualizer</h1>
+        <p class="site-sub">by <span class="author">Aarna</span></p>
+      </div>
+    </div>
+    <div class="header-right">
+      <button class="theme-toggle" id="themeToggle" title="Toggle light/dark">
+        <span class="toggle-icon" id="toggleIcon">☽</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- STATUS BANNER -->
+  <div class="status-banner" id="statusBanner" data-status="idle">
+    <span id="statusIcon">💤</span>
+    <span id="statusText">Graph is empty — add processes &amp; resources to begin</span>
+  </div>
+
+  <!-- MAIN LAYOUT -->
+  <main class="app-layout">
+
+    <!-- LEFT CONTROL PANEL -->
+    <aside class="control-panel glass" id="controlPanel">
+
+      <section class="panel-section">
+        <h3 class="section-title">➕ Add Nodes</h3>
+        <div class="input-row">
+          <button class="btn btn-process" id="addProcessBtn">Process</button>
+          <button class="btn btn-resource" id="addResourceBtn">Resource</button>
+        </div>
+        <div class="input-row mt-sm">
+          <label class="small-label">Instances (for next resource)</label>
+          <input type="number" id="resourceInstances" value="1" min="1" max="9" class="num-input" />
+        </div>
+      </section>
+
+      <section class="panel-section">
+        <h3 class="section-title">🔗 Add Edge</h3>
+        <div class="edge-form">
+          <select id="edgeFrom" class="sel"></select>
+          <span class="arrow-sym">→</span>
+          <select id="edgeTo" class="sel"></select>
+        </div>
+        <button class="btn btn-edge full-btn" id="addEdgeBtn">Add Edge</button>
+        <p class="hint">R→P = allocation &nbsp;|&nbsp; P→R = request</p>
+      </section>
+
+      <section class="panel-section">
+        <h3 class="section-title">⚡ Actions</h3>
+        <button class="btn btn-detect full-btn" id="detectBtn">🔍 Detect Deadlock</button>
+        <button class="btn btn-step full-btn" id="stepBtn">▶ Step-by-Step</button>
+        <button class="btn btn-random full-btn" id="randomBtn">🎲 Random Case</button>
+        <button class="btn btn-reset full-btn" id="resetBtn">⟳ Reset All</button>
+      </section>
+
+      <section class="panel-section" id="resolutionSection" style="display:none;">
+        <h3 class="section-title">🛠 Resolution</h3>
+        <select id="resolveTarget" class="sel full-sel"></select>
+        <div class="input-row mt-sm">
+          <button class="btn btn-terminate" id="terminateBtn">✕ Terminate</button>
+          <button class="btn btn-preempt" id="preemptBtn">⇥ Preempt</button>
+        </div>
+      </section>
+
+      <section class="panel-section">
+        <h3 class="section-title">📋 Node List</h3>
+        <div id="nodeList" class="node-list"></div>
+      </section>
+
+    </aside>
+
+    <!-- SVG GRAPH CANVAS -->
+    <div class="canvas-wrapper">
+      <svg id="graphSvg" class="graph-svg">
+        <defs>
+          <marker id="arrow" markerWidth="10" markerHeight="7"
+                  refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" class="arrowhead" />
+          </marker>
+          <marker id="arrow-cycle" markerWidth="10" markerHeight="7"
+                  refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" class="arrowhead-cycle" />
+          </marker>
+          <filter id="glow">
+            <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+            <feMerge>
+              <feMergeNode in="coloredBlur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+          <filter id="glow-strong">
+            <feGaussianBlur stdDeviation="7" result="coloredBlur"/>
+            <feMerge>
+              <feMergeNode in="coloredBlur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+        </defs>
+        <g id="edgesGroup"></g>
+        <g id="nodesGroup"></g>
+      </svg>
+
+      <div class="canvas-empty-hint" id="canvasHint">
+        <div class="hint-icon">◈</div>
+        <p>Add processes &amp; resources<br/>then connect them with edges</p>
+      </div>
+
+      <div class="tooltip" id="tooltip"></div>
+    </div>
+
+    <!-- RIGHT INFO PANEL -->
+    <aside class="info-panel glass">
+      <section class="panel-section">
+        <h3 class="section-title">🔴 Deadlocked Processes</h3>
+        <div id="deadlockList" class="deadlock-list">
+          <span class="muted">None detected yet</span>
+        </div>
+      </section>
+      <section class="panel-section log-section">
+        <h3 class="section-title">📜 Simulation Log</h3>
+        <div id="simLog" class="sim-log"></div>
+      </section>
+    </aside>
+
+  </main>
+
+  <!-- STEP-BY-STEP MODAL -->
+  <div class="modal-overlay" id="stepModal" style="display:none;">
+    <div class="modal glass">
+      <h3 class="modal-title">Step-by-Step Detection</h3>
+      <div id="stepContent" class="step-content"></div>
+      <div class="modal-actions">
+        <button class="btn btn-step" id="nextStepBtn">Next ▶</button>
+        <button class="btn btn-reset" id="closeStepBtn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
