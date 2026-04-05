@@ -1,765 +1,1184 @@
-/**
- * ══════════════════════════════════════════════════
- *  Deadlock Visualizer — script.js
- *  By Aarna
- *  Handles: Graph state, RAG rendering, deadlock
- *  detection (DFS cycle), resolution, step mode,
- *  drag-and-drop, tooltip, background canvas, theme
- * ══════════════════════════════════════════════════
- */
+/* ═══════════════════════════════════════════════════════════
+   PrinterSync — Deadlock Simulator  |  style.css
+   By Aarna  ·  Space Mono + Syne  ·  Vibrant Neon-Dark Theme
+   Concept: Computers (💻) compete for Printers (🖨️)
+═══════════════════════════════════════════════════════════ */
 
-/* ─────────────────────────────────────────────────
-   STATE
-───────────────────────────────────────────────── */
-const state = {
-  processes: [],   // { id, x, y }
-  resources: [],   // { id, x, y, instances }
-  edges: [],       // { from, to, type: 'alloc'|'request' }
-  deadlocked: [],  // process ids
-  processCount: 0,
-  resourceCount: 0,
-};
+/* ── GOOGLE FONTS ── */
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap');
 
-/* ─────────────────────────────────────────────────
-   DOM REFS
-───────────────────────────────────────────────── */
-const svg          = document.getElementById('graphSvg');
-const edgesGroup   = document.getElementById('edgesGroup');
-const nodesGroup   = document.getElementById('nodesGroup');
-const edgeFrom     = document.getElementById('edgeFrom');
-const edgeTo       = document.getElementById('edgeTo');
-const nodeListEl   = document.getElementById('nodeList');
-const deadlockList = document.getElementById('deadlockList');
-const simLog       = document.getElementById('simLog');
-const statusBanner = document.getElementById('statusBanner');
-const statusText   = document.getElementById('statusText');
-const statusIcon   = document.getElementById('statusIcon');
-const canvasHint   = document.getElementById('canvasHint');
-const tooltip      = document.getElementById('tooltip');
-const resolutionSection = document.getElementById('resolutionSection');
-const resolveTarget     = document.getElementById('resolveTarget');
-const stepModal    = document.getElementById('stepModal');
-const stepContent  = document.getElementById('stepContent');
+/* ════════════════════════════════════════════════════
+   CSS CUSTOM PROPERTIES
+════════════════════════════════════════════════════ */
+:root {
+  /* ── DARK THEME (default) ── */
+  --bg:            #080812;        /* deep void */
+  --bg2:           #0d0d1f;
+  --bg3:           #11112a;
+  --surface:       rgba(255,255,255,0.035);
+  --surface2:      rgba(255,255,255,0.065);
+  --surface3:      rgba(255,255,255,0.10);
+  --border:        rgba(255,255,255,0.07);
+  --border-bright: rgba(255,255,255,0.14);
+  --text:          #eceaf8;
+  --text-muted:    #5e5c80;
+  --text-soft:     #a09dbf;
 
-/* ─────────────────────────────────────────────────
-   BACKGROUND CANVAS (animated grid + particles)
-───────────────────────────────────────────────── */
-(function initBgCanvas() {
-  const canvas = document.getElementById('bg-canvas');
-  const ctx = canvas.getContext('2d');
-  let W, H, particles = [];
+  /* ── BRAND PALETTE ── */
+  --purple:        #8b5cf6;        /* primary — computers */
+  --purple-light:  #c4b5fd;
+  --purple-dark:   #6d28d9;
+  --cyan:          #22d3ee;        /* secondary — printers */
+  --cyan-light:    #67e8f9;
+  --cyan-dark:     #0891b2;
+  --pink:          #f472b6;        /* accent */
+  --pink-dark:     #db2777;
+  --danger:        #fb4d6d;        /* deadlock red */
+  --danger-glow:   rgba(251,77,109,0.5);
+  --warn:          #f97316;        /* warning orange */
+  --ok:            #10b981;        /* safe green */
+  --ok-glow:       rgba(16,185,129,0.4);
 
-  function resize() {
-    W = canvas.width  = window.innerWidth;
-    H = canvas.height = window.innerHeight;
+  /* ── SEMANTIC ALIASES ── */
+  --process-col:   var(--purple);
+  --resource-col:  var(--cyan);
+
+  /* ── GLOW SHADOWS ── */
+  --glow-p:        0 0 20px rgba(139,92,246,0.55), 0 0 40px rgba(139,92,246,0.2);
+  --glow-r:        0 0 20px rgba(34,211,238,0.5),  0 0 40px rgba(34,211,238,0.18);
+  --glow-bad:      0 0 24px rgba(251,77,109,0.65), 0 0 48px rgba(251,77,109,0.25);
+  --glow-ok:       0 0 20px rgba(16,185,129,0.5);
+  --glow-pink:     0 0 20px rgba(244,114,182,0.5);
+
+  /* ── LAYOUT ── */
+  --panel-w:      270px;
+  --header-h:      68px;
+  --banner-h:      40px;
+  --radius:        16px;
+  --radius-sm:     10px;
+  --radius-xs:      6px;
+
+  /* ── TRANSITIONS ── */
+  --transition:    0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  --spring:        0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ── LIGHT THEME OVERRIDES ── */
+[data-theme="light"] {
+  --bg:            #f5f3ff;
+  --bg2:           #ede9fe;
+  --bg3:           #ddd6fe;
+  --surface:       rgba(255,255,255,0.72);
+  --surface2:      rgba(255,255,255,0.88);
+  --surface3:      rgba(255,255,255,0.96);
+  --border:        rgba(109,40,217,0.12);
+  --border-bright: rgba(109,40,217,0.22);
+  --text:          #1e1b3a;
+  --text-muted:    #7c72a0;
+  --text-soft:     #5b5280;
+  --purple:        #7c3aed;
+  --purple-light:  #8b5cf6;
+  --cyan:          #0891b2;
+  --cyan-light:    #06b6d4;
+  --glow-p:        0 0 14px rgba(124,58,237,0.3);
+  --glow-r:        0 0 14px rgba(8,145,178,0.35);
+  --glow-bad:      0 0 18px rgba(251,77,109,0.4);
+}
+
+/* ════════════════════════════════════════════════════
+   RESET + BASE
+════════════════════════════════════════════════════ */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0; padding: 0;
+}
+
+html, body {
+  height: 100%;
+  font-family: 'Space Mono', monospace;
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+  transition: background var(--transition), color var(--transition);
+}
+
+/* ════════════════════════════════════════════════════
+   ANIMATED BACKGROUND CANVAS
+════════════════════════════════════════════════════ */
+#bg-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  opacity: 0.28;
+  pointer-events: none;
+}
+
+/* ════════════════════════════════════════════════════
+   GLASSMORPHISM CARD
+════════════════════════════════════════════════════ */
+.glass {
+  background: var(--surface);
+  backdrop-filter: blur(22px) saturate(180%);
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  transition: border-color var(--transition), background var(--transition);
+}
+.glass:hover { border-color: var(--border-bright); }
+
+/* ════════════════════════════════════════════════════
+   HEADER
+════════════════════════════════════════════════════ */
+.site-header {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: var(--header-h);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  background: var(--surface);
+  backdrop-filter: blur(24px);
+  border-bottom: 1px solid var(--border);
+  transition: background var(--transition);
+  gap: 12px;
+}
+
+/* ── Logo / brand ── */
+.header-left { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+
+.logo-wrap {
+  position: relative;
+  width: 40px; height: 44px;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.logo-icon {
+  font-size: 26px;
+  filter: drop-shadow(0 0 8px var(--cyan));
+  animation: printer-wobble 4s ease-in-out infinite;
+  position: relative; z-index: 1;
+}
+
+/* Paper strip that "feeds" out of the printer logo */
+.logo-paper-strip {
+  position: absolute;
+  bottom: -2px; left: 50%;
+  transform: translateX(-50%);
+  width: 14px; height: 6px;
+  background: var(--surface3);
+  border-radius: 0 0 3px 3px;
+  border: 1px solid var(--border-bright);
+  animation: paper-feed 2.5s ease-in-out infinite;
+}
+
+@keyframes paper-feed {
+  0%, 60%  { height: 2px; opacity: 0.4; }
+  30%      { height: 10px; opacity: 1; }
+  100%     { height: 2px; opacity: 0.4; }
+}
+
+@keyframes printer-wobble {
+  0%,100% { transform: translateY(0); filter: drop-shadow(0 0 6px var(--cyan)); }
+  50%     { transform: translateY(-2px); filter: drop-shadow(0 0 14px var(--cyan-light)); }
+}
+
+.header-titles {}
+.site-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 1.3rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  background: linear-gradient(135deg, var(--purple-light), var(--pink), var(--cyan));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1.1;
+}
+
+.site-sub {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+  margin-top: 1px;
+}
+
+.author {
+  color: var(--pink);
+  font-style: italic;
+  -webkit-text-fill-color: var(--pink);
+}
+
+/* ── Center ticker ── */
+.header-center { flex: 1; display: flex; justify-content: center; }
+
+.queue-ticker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 0.65rem;
+  color: var(--text-soft);
+  max-width: 340px;
+  transition: all var(--transition);
+}
+
+.ticker-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--ok);
+  box-shadow: 0 0 6px var(--ok);
+  flex-shrink: 0;
+  animation: ticker-blink 2s ease-in-out infinite;
+}
+
+@keyframes ticker-blink {
+  0%,100% { opacity: 1; }
+  50%     { opacity: 0.3; }
+}
+
+/* ── Theme toggle ── */
+.header-right { flex-shrink: 0; }
+
+.theme-toggle {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  cursor: pointer;
+  font-size: 1.1rem;
+  display: grid; place-items: center;
+  transition: all var(--transition);
+  color: var(--text);
+}
+.theme-toggle:hover {
+  background: var(--purple);
+  border-color: var(--purple);
+  box-shadow: var(--glow-p);
+  transform: rotate(25deg) scale(1.1);
+}
+
+/* ════════════════════════════════════════════════════
+   STATUS BANNER
+════════════════════════════════════════════════════ */
+.status-banner {
+  position: fixed;
+  top: var(--header-h);
+  left: 0; right: 0;
+  z-index: 90;
+  height: var(--banner-h);
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'Syne', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  transition: background var(--transition), color var(--transition),
+              border-color var(--transition);
+  overflow: hidden;
+}
+
+/* Animated scanner line (idle state) */
+.banner-scanner {
+  position: absolute;
+  top: 0; bottom: 0; left: -100%;
+  width: 60%;
+  background: linear-gradient(90deg, transparent, rgba(139,92,246,0.06), transparent);
+  animation: scanner-sweep 4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes scanner-sweep {
+  0%   { left: -60%; }
+  100% { left: 110%; }
+}
+
+.status-pill {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+/* Safe state */
+.status-banner[data-status="safe"] {
+  background: rgba(16,185,129,0.08);
+  border-bottom-color: rgba(16,185,129,0.3);
+  color: var(--ok);
+}
+.status-banner[data-status="safe"] .banner-scanner { display: none; }
+
+/* Deadlock state */
+.status-banner[data-status="deadlock"] {
+  background: rgba(251,77,109,0.1);
+  border-bottom-color: rgba(251,77,109,0.45);
+  color: var(--danger);
+  animation: banner-alarm 1.2s ease-in-out infinite;
+}
+.status-banner[data-status="deadlock"] .banner-scanner { display: none; }
+
+@keyframes banner-alarm {
+  0%,100% { background: rgba(251,77,109,0.07); }
+  50%     { background: rgba(251,77,109,0.17); }
+}
+
+/* Warning state */
+.status-banner[data-status="warn"] {
+  background: rgba(249,115,22,0.08);
+  border-bottom-color: rgba(249,115,22,0.35);
+  color: var(--warn);
+}
+
+/* ════════════════════════════════════════════════════
+   APP LAYOUT — 3-column grid
+════════════════════════════════════════════════════ */
+.app-layout {
+  position: fixed;
+  top: calc(var(--header-h) + var(--banner-h));
+  left: 0; right: 0; bottom: 0;
+  display: grid;
+  grid-template-columns: var(--panel-w) 1fr var(--panel-w);
+  gap: 10px;
+  padding: 10px;
+  z-index: 10;
+  overflow: hidden;
+}
+
+/* ════════════════════════════════════════════════════
+   SIDE PANELS (shared)
+════════════════════════════════════════════════════ */
+.control-panel,
+.info-panel {
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+/* ── Panel section card ── */
+.panel-section {
+  background: var(--surface2);
+  border-radius: var(--radius-sm);
+  padding: 13px 12px;
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+.panel-section:hover { border-color: var(--border-bright); }
+
+/* Resolution section gets a danger tint */
+.resolution-panel {
+  border-color: rgba(251,77,109,0.25) !important;
+  background: rgba(251,77,109,0.04) !important;
+  animation: section-pulse 1.8s ease-in-out infinite;
+}
+@keyframes section-pulse {
+  0%,100% { border-color: rgba(251,77,109,0.2); }
+  50%     { border-color: rgba(251,77,109,0.4); }
+}
+
+/* ── Section title ── */
+.section-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 0.67rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.danger-title { color: var(--danger) !important; opacity: 0.85; }
+
+.title-icon { font-size: 0.75rem; }
+
+/* ════════════════════════════════════════════════════
+   BUTTONS
+════════════════════════════════════════════════════ */
+.btn {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.69rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 10px 14px;           /* larger hit target */
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.22s ease;
+  white-space: nowrap;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+/* Ripple shimmer */
+.btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(120deg, transparent 30%, rgba(255,255,255,0.08) 50%, transparent 70%);
+  transform: translateX(-100%);
+  transition: transform 0.5s ease;
+}
+.btn:hover::before { transform: translateX(100%); }
+
+/* Click flash */
+.btn::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: white; opacity: 0;
+  transition: opacity 0.12s;
+}
+.btn:active::after { opacity: 0.08; }
+
+.btn-icon { font-size: 0.85rem; line-height: 1; }
+
+/* Computer button (Process) */
+.btn-process {
+  background: rgba(139,92,246,0.13);
+  border-color: rgba(139,92,246,0.38);
+  color: var(--purple-light);
+  flex: 1;
+}
+.btn-process:hover {
+  background: rgba(139,92,246,0.28);
+  border-color: var(--purple);
+  box-shadow: var(--glow-p);
+  transform: translateY(-2px) scale(1.02);
+}
+.btn-process:active { transform: translateY(0) scale(0.98); }
+
+/* Printer button (Resource) */
+.btn-resource {
+  background: rgba(34,211,238,0.09);
+  border-color: rgba(34,211,238,0.32);
+  color: var(--cyan-light);
+  flex: 1;
+}
+.btn-resource:hover {
+  background: rgba(34,211,238,0.22);
+  border-color: var(--cyan);
+  box-shadow: var(--glow-r);
+  transform: translateY(-2px) scale(1.02);
+}
+.btn-resource:active { transform: translateY(0) scale(0.98); }
+
+/* Edge / link button */
+.btn-edge {
+  background: rgba(255,255,255,0.05);
+  border-color: var(--border-bright);
+  color: var(--text-soft);
+}
+.btn-edge:hover {
+  background: var(--surface3);
+  color: var(--text);
+  transform: translateY(-1px);
+}
+
+/* Detect jam button — gradient hero */
+.btn-detect {
+  background: linear-gradient(135deg,
+    rgba(139,92,246,0.28) 0%,
+    rgba(244,114,182,0.18) 100%);
+  border-color: rgba(139,92,246,0.5);
+  color: var(--purple-light);
+  font-size: 0.72rem;
+  padding: 12px 14px;
+}
+.btn-detect:hover {
+  background: linear-gradient(135deg,
+    rgba(139,92,246,0.45) 0%,
+    rgba(244,114,182,0.32) 100%);
+  border-color: var(--purple-light);
+  box-shadow: var(--glow-p);
+  transform: translateY(-2px);
+}
+
+/* Step trace button */
+.btn-step {
+  background: rgba(34,211,238,0.1);
+  border-color: rgba(34,211,238,0.28);
+  color: var(--cyan);
+}
+.btn-step:hover {
+  background: rgba(34,211,238,0.22);
+  box-shadow: var(--glow-r);
+  transform: translateY(-1px);
+}
+
+/* Random scenario */
+.btn-random {
+  background: rgba(249,115,22,0.09);
+  border-color: rgba(249,115,22,0.28);
+  color: var(--warn);
+}
+.btn-random:hover {
+  background: rgba(249,115,22,0.2);
+  transform: translateY(-1px);
+}
+
+/* Reset / clear */
+.btn-reset {
+  background: rgba(255,255,255,0.03);
+  border-color: var(--border);
+  color: var(--text-muted);
+}
+.btn-reset:hover {
+  color: var(--text);
+  background: var(--surface2);
+  transform: translateY(-1px);
+}
+
+/* Kill Job (terminate) */
+.btn-terminate {
+  background: rgba(251,77,109,0.12);
+  border-color: rgba(251,77,109,0.35);
+  color: var(--danger);
+  flex: 1;
+}
+.btn-terminate:hover {
+  background: rgba(251,77,109,0.26);
+  box-shadow: var(--glow-bad);
+  transform: translateY(-1px);
+}
+
+/* Preempt */
+.btn-preempt {
+  background: rgba(249,115,22,0.09);
+  border-color: rgba(249,115,22,0.28);
+  color: var(--warn);
+  flex: 1;
+}
+.btn-preempt:hover {
+  background: rgba(249,115,22,0.2);
+  transform: translateY(-1px);
+}
+
+.full-btn { width: 100%; }
+
+/* ── Button pair layout ── */
+.btn-pair {
+  display: flex;
+  gap: 6px;
+}
+
+/* ════════════════════════════════════════════════════
+   INPUTS / SELECTS
+════════════════════════════════════════════════════ */
+.sel,
+.num-input {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.7rem;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  color: var(--text);
+  padding: 7px 9px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  outline: none;
+  -webkit-appearance: none;
+}
+.sel:focus,
+.num-input:focus {
+  border-color: var(--purple);
+  box-shadow: 0 0 0 3px rgba(139,92,246,0.15);
+}
+
+.num-input { width: 58px; text-align: center; }
+.full-sel  { width: 100%; }
+
+.input-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.mt-sm { margin-top: 2px; }
+
+.edge-form {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.edge-form .sel { flex: 1; }
+
+.arrow-sym {
+  color: var(--pink);
+  font-size: 1rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.small-label {
+  font-size: 0.62rem;
+  color: var(--text-muted);
+  flex: 1;
+  line-height: 1.4;
+}
+.label-hint { color: var(--text-soft); font-style: italic; }
+
+.hint {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  font-style: italic;
+  line-height: 1.5;
+}
+.resolve-hint { font-style: normal; color: var(--text-soft); }
+
+/* ════════════════════════════════════════════════════
+   NODE LIST (Device List)
+════════════════════════════════════════════════════ */
+.node-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.node-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  border-radius: var(--radius-xs);
+  font-size: 0.68rem;
+  border: 1px solid transparent;
+  transition: all 0.2s;
+  animation: slide-in 0.25s ease;
+}
+.node-item.process-item {
+  background: rgba(139,92,246,0.08);
+  border-color: rgba(139,92,246,0.2);
+  color: var(--purple-light);
+}
+.node-item.resource-item {
+  background: rgba(34,211,238,0.07);
+  border-color: rgba(34,211,238,0.2);
+  color: var(--cyan-light);
+}
+.node-item:hover { transform: translateX(3px); }
+
+.node-del {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.8rem;
+  padding: 1px 3px;
+  border-radius: 4px;
+  transition: all 0.15s;
+}
+.node-del:hover {
+  color: var(--danger);
+  background: rgba(251,77,109,0.12);
+}
+
+@keyframes slide-in {
+  from { opacity: 0; transform: translateX(-12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ════════════════════════════════════════════════════
+   CANVAS WRAPPER
+════════════════════════════════════════════════════ */
+.canvas-wrapper {
+  position: relative;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  backdrop-filter: blur(14px);
+  transition: border-color var(--transition);
+}
+.canvas-wrapper:hover { border-color: var(--border-bright); }
+
+.graph-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* ── Empty state hint ── */
+.canvas-empty-hint {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  transition: opacity 0.35s;
+  gap: 10px;
+  text-align: center;
+}
+
+.hint-scene {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 2.2rem;
+  animation: float 3s ease-in-out infinite;
+}
+
+.hint-arrow-anim {
+  font-size: 1.2rem;
+  color: var(--purple-light);
+  opacity: 0.5;
+  animation: arrow-ping 1.8s ease-in-out infinite;
+}
+
+@keyframes arrow-ping {
+  0%,100% { opacity: 0.3; transform: scaleX(1); }
+  50%     { opacity: 0.8; transform: scaleX(1.2); }
+}
+
+.hint-printer { filter: drop-shadow(0 0 8px var(--cyan)); }
+.hint-computer { filter: drop-shadow(0 0 8px var(--purple)); }
+
+.hint-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-soft);
+}
+.hint-sub {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  line-height: 1.7;
+}
+.hint-challenge {
+  font-size: 0.65rem;
+  color: var(--pink);
+  font-style: italic;
+  opacity: 0.7;
+}
+
+@keyframes float {
+  0%,100% { transform: translateY(0); }
+  50%     { transform: translateY(-10px); }
+}
+
+/* ── Canvas edge legend ── */
+.canvas-legend {
+  position: absolute;
+  bottom: 12px; right: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.58rem;
+  opacity: 0.6;
+  pointer-events: none;
+}
+.legend-item { display: flex; align-items: center; gap: 5px; color: var(--text-muted); }
+.alloc-legend  { color: var(--cyan); }
+.req-legend    { color: var(--purple-light); }
+.cycle-legend  { color: var(--danger); }
+
+/* ════════════════════════════════════════════════════
+   SVG NODE STYLES
+════════════════════════════════════════════════════ */
+
+/* Shared node shapes */
+.node-circle {
+  cursor: grab;
+  transition: filter 0.2s, stroke-width 0.2s;
+}
+.node-circle:active { cursor: grabbing; }
+.node-circle:hover  { filter: url(#glow); }
+
+/* Computer (process) — circle */
+.process-node {
+  fill: rgba(139,92,246,0.14);
+  stroke: var(--purple);
+  stroke-width: 2;
+}
+
+/* Printer (resource) — rectangle */
+.resource-node {
+  fill: rgba(34,211,238,0.11);
+  stroke: var(--cyan);
+  stroke-width: 2;
+}
+
+/* Node text label */
+.node-label {
+  font-family: 'Syne', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  fill: var(--text);
+  pointer-events: none;
+  user-select: none;
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
+
+/* Emoji icon inside nodes */
+.node-emoji {
+  font-size: 13px;
+  pointer-events: none;
+  user-select: none;
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
+
+/* Printer instance dots */
+.instance-dot {
+  fill: var(--cyan);
+  opacity: 0.75;
+}
+
+/* ── DEADLOCK highlight ── */
+.node-deadlock {
+  animation: deadlock-pulse 0.9s ease-in-out infinite;
+}
+
+@keyframes deadlock-pulse {
+  0%,100% {
+    filter: url(#glow);
+    stroke: var(--danger);
+    stroke-width: 2.5;
+    fill-opacity: 0.2;
   }
-
-  function spawnParticles() {
-    particles = [];
-    const count = Math.floor((W * H) / 22000);
-    for (let i = 0; i < count; i++) {
-      particles.push({
-        x: Math.random() * W,
-        y: Math.random() * H,
-        vx: (Math.random() - 0.5) * 0.3,
-        vy: (Math.random() - 0.5) * 0.3,
-        r: Math.random() * 1.5 + 0.5,
-      });
-    }
+  50% {
+    filter: url(#glow-strong);
+    stroke: #ff8fa3;
+    stroke-width: 3.8;
+    fill-opacity: 0.35;
   }
+}
 
-  function drawGrid(ctx, W, H) {
-    const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
-    const lineColor = isDark ? 'rgba(124,92,252,0.06)' : 'rgba(91,53,213,0.05)';
-    ctx.strokeStyle = lineColor;
-    ctx.lineWidth = 1;
-    const step = 60;
-    for (let x = 0; x < W; x += step) {
-      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
-    }
-    for (let y = 0; y < H; y += step) {
-      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
-    }
+/* ── PRINTING animation (resource with active alloc edge) ── */
+.resource-printing {
+  animation: resource-print 1.4s ease-in-out infinite;
+}
+
+@keyframes resource-print {
+  0%,100% {
+    filter: url(#glow-print);
+    stroke: var(--cyan-light);
+    stroke-width: 2;
   }
-
-  function frame() {
-    ctx.clearRect(0, 0, W, H);
-    drawGrid(ctx, W, H);
-
-    const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
-    const pCol = isDark ? 'rgba(124,92,252,0.5)' : 'rgba(91,53,213,0.35)';
-
-    particles.forEach(p => {
-      p.x += p.vx; p.y += p.vy;
-      if (p.x < 0) p.x = W; if (p.x > W) p.x = 0;
-      if (p.y < 0) p.y = H; if (p.y > H) p.y = 0;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-      ctx.fillStyle = pCol;
-      ctx.fill();
-    });
-
-    requestAnimationFrame(frame);
+  50% {
+    filter: url(#glow-print);
+    stroke: var(--cyan);
+    stroke-width: 3;
   }
-
-  resize(); spawnParticles(); frame();
-  window.addEventListener('resize', () => { resize(); spawnParticles(); });
-})();
-
-/* ─────────────────────────────────────────────────
-   THEME TOGGLE
-───────────────────────────────────────────────── */
-document.getElementById('themeToggle').addEventListener('click', () => {
-  const html = document.documentElement;
-  const isDark = html.getAttribute('data-theme') === 'dark';
-  html.setAttribute('data-theme', isDark ? 'light' : 'dark');
-  document.getElementById('toggleIcon').textContent = isDark ? '☀' : '☽';
-  log('Theme switched to ' + (isDark ? 'light' : 'dark') + ' mode', 'info');
-});
-
-/* ─────────────────────────────────────────────────
-   LOGGING
-───────────────────────────────────────────────── */
-function log(msg, type = 'info') {
-  const div = document.createElement('div');
-  div.className = `log-entry log-${type}`;
-  const ts = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  div.textContent = `[${ts}] ${msg}`;
-  simLog.prepend(div);
-  // keep max 60 entries
-  while (simLog.children.length > 60) simLog.removeChild(simLog.lastChild);
 }
 
-/* ─────────────────────────────────────────────────
-   HELPERS — geometry
-───────────────────────────────────────────────── */
-function getNodePos(id) {
-  const n = [...state.processes, ...state.resources].find(n => n.id === id);
-  return n ? { x: n.x, y: n.y } : null;
+/* Paper coming out of printer node */
+.print-paper {
+  animation: print-paper-out 1.4s ease-in-out infinite;
+  fill: var(--surface3);
+  stroke: var(--cyan-light);
+  stroke-width: 1;
 }
 
-function isProcess(id) { return id.startsWith('P'); }
-function isResource(id) { return id.startsWith('R'); }
-
-/** Clamp a point on the border of a circle/rect toward target */
-function edgeEndpoints(fromId, toId) {
-  const from = getNodePos(fromId);
-  const to   = getNodePos(toId);
-  if (!from || !to) return null;
-
-  const dx = to.x - from.x, dy = to.y - from.y;
-  const dist = Math.hypot(dx, dy) || 1;
-  const ux = dx / dist, uy = dy / dist;
-
-  const rFrom = isProcess(fromId) ? 26 : 22;
-  const rTo   = isProcess(toId)   ? 28 : 24; // slightly larger for arrow gap
-
-  return {
-    x1: from.x + ux * rFrom,
-    y1: from.y + uy * rFrom,
-    x2: to.x   - ux * rTo,
-    y2: to.y   - uy * rTo,
-  };
+@keyframes print-paper-out {
+  0%   { transform: translateY(0);    opacity: 0; }
+  20%  { opacity: 1; }
+  70%  { transform: translateY(-14px); opacity: 0.8; }
+  100% { transform: translateY(-18px); opacity: 0; }
 }
 
-/* ─────────────────────────────────────────────────
-   RENDER
-───────────────────────────────────────────────── */
-function render() {
-  // hide/show empty hint
-  const hasNodes = state.processes.length + state.resources.length > 0;
-  canvasHint.style.opacity = hasNodes ? '0' : '1';
-  canvasHint.style.pointerEvents = hasNodes ? 'none' : 'auto';
-
-  renderEdges();
-  renderNodes();
-  updateSelects();
-  updateNodeList();
+/* ════════════════════════════════════════════════════
+   SVG EDGE STYLES
+════════════════════════════════════════════════════ */
+.edge-line {
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  transition: stroke 0.3s, stroke-width 0.3s;
+  animation: edge-appear 0.35s ease forwards;
 }
 
-function renderEdges() {
-  edgesGroup.innerHTML = '';
-
-  state.edges.forEach((edge, idx) => {
-    const pts = edgeEndpoints(edge.from, edge.to);
-    if (!pts) return;
-
-    const isCycle = state.deadlocked.length > 0 &&
-                    state.deadlocked.includes(edge.from) &&
-                    state.deadlocked.includes(edge.to);
-
-    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    line.setAttribute('x1', pts.x1); line.setAttribute('y1', pts.y1);
-    line.setAttribute('x2', pts.x2); line.setAttribute('y2', pts.y2);
-    line.setAttribute('marker-end', isCycle ? 'url(#arrow-cycle)' : 'url(#arrow)');
-    line.setAttribute('class', `edge-line ${isCycle ? 'edge-cycle' : (edge.type === 'alloc' ? 'edge-alloc' : 'edge-request')}`);
-    line.dataset.idx = idx;
-
-    // tooltip
-    line.addEventListener('mouseenter', (e) => {
-      showTooltip(e, `${edge.from} → ${edge.to}\n${edge.type === 'alloc' ? '📦 Allocation' : '📋 Request'}`);
-    });
-    line.addEventListener('mousemove', moveTooltip);
-    line.addEventListener('mouseleave', hideTooltip);
-
-    edgesGroup.appendChild(line);
-  });
+/* Allocation edge: Printer → Computer (solid, cyan) */
+.edge-alloc {
+  stroke: var(--cyan);
+  opacity: 0.7;
 }
 
-function renderNodes() {
-  nodesGroup.innerHTML = '';
-
-  // Processes — circles
-  state.processes.forEach(p => {
-    const isDeadlocked = state.deadlocked.includes(p.id);
-    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-    g.setAttribute('transform', `translate(${p.x},${p.y})`);
-    g.style.cursor = 'grab';
-
-    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    circle.setAttribute('r', 26);
-    circle.setAttribute('class', `node-circle process-node${isDeadlocked ? ' node-deadlock' : ''}`);
-    if (isDeadlocked) circle.setAttribute('filter', 'url(#glow-strong)');
-
-    const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    label.setAttribute('class', 'node-label');
-    label.textContent = p.id;
-    if (isDeadlocked) label.setAttribute('fill', '#ff4d6d');
-
-    g.appendChild(circle);
-    g.appendChild(label);
-    makeDraggable(g, p);
-    addNodeTooltip(g, p, 'process');
-
-    nodesGroup.appendChild(g);
-  });
-
-  // Resources — rectangles with instance dots
-  state.resources.forEach(r => {
-    const isDeadlocked = state.deadlocked.includes(r.id);
-    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-    g.setAttribute('transform', `translate(${r.x},${r.y})`);
-    g.style.cursor = 'grab';
-
-    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-    rect.setAttribute('x', -26); rect.setAttribute('y', -22);
-    rect.setAttribute('width', 52); rect.setAttribute('height', 44);
-    rect.setAttribute('rx', 8); rect.setAttribute('ry', 8);
-    rect.setAttribute('class', `node-circle resource-node${isDeadlocked ? ' node-deadlock' : ''}`);
-    if (isDeadlocked) rect.setAttribute('filter', 'url(#glow-strong)');
-
-    const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    label.setAttribute('class', 'node-label');
-    label.setAttribute('y', -6);
-    label.textContent = r.id;
-    if (isDeadlocked) label.setAttribute('fill', '#ff4d6d');
-
-    g.appendChild(rect);
-    g.appendChild(label);
-
-    // Instance dots
-    const inst = r.instances || 1;
-    const dotR = 4, spacing = 10;
-    const totalW = (inst - 1) * spacing;
-    for (let i = 0; i < inst; i++) {
-      const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      dot.setAttribute('cx', -totalW / 2 + i * spacing);
-      dot.setAttribute('cy', 10);
-      dot.setAttribute('r', dotR);
-      dot.setAttribute('class', 'instance-dot');
-      g.appendChild(dot);
-    }
-
-    makeDraggable(g, r);
-    addNodeTooltip(g, r, 'resource');
-
-    nodesGroup.appendChild(g);
-  });
+/* Request edge: Computer → Printer (dashed, purple) */
+.edge-request {
+  stroke: var(--purple-light);
+  opacity: 0.65;
+  stroke-dasharray: 6 4;
 }
 
-/* ─────────────────────────────────────────────────
-   DRAG AND DROP
-───────────────────────────────────────────────── */
-function makeDraggable(g, nodeData) {
-  let dragging = false, startX, startY, origX, origY;
-
-  g.addEventListener('mousedown', (e) => {
-    dragging = true;
-    startX = e.clientX; startY = e.clientY;
-    origX = nodeData.x; origY = nodeData.y;
-    g.style.cursor = 'grabbing';
-    e.preventDefault();
-  });
-
-  window.addEventListener('mousemove', (e) => {
-    if (!dragging) return;
-    const svgRect = svg.getBoundingClientRect();
-    const scaleX = svg.viewBox.baseVal.width  / svgRect.width  || 1;
-    const scaleY = svg.viewBox.baseVal.height / svgRect.height || 1;
-    nodeData.x = origX + (e.clientX - startX) * scaleX;
-    nodeData.y = origY + (e.clientY - startY) * scaleY;
-    renderEdges();
-    g.setAttribute('transform', `translate(${nodeData.x},${nodeData.y})`);
-  });
-
-  window.addEventListener('mouseup', () => {
-    if (dragging) { dragging = false; g.style.cursor = 'grab'; }
-  });
+/* Cycle edge: JAMMED (red, animated) */
+.edge-cycle {
+  stroke: var(--danger);
+  opacity: 1;
+  stroke-dasharray: none;
+  stroke-width: 2.5;
+  animation: cycle-alarm 0.75s ease-in-out infinite;
 }
 
-/* ─────────────────────────────────────────────────
+@keyframes edge-appear {
+  from { opacity: 0; stroke-dashoffset: 180; }
+  to   { opacity: 1; stroke-dashoffset: 0; }
+}
+
+@keyframes cycle-alarm {
+  0%,100% { opacity: 0.65; stroke-width: 2; }
+  50%     { opacity: 1;    stroke-width: 3.2; filter: drop-shadow(0 0 4px var(--danger)); }
+}
+
+/* Arrow markers */
+.arrowhead       { fill: var(--text-muted); }
+.arrowhead-cycle { fill: var(--danger); }
+
+/* ════════════════════════════════════════════════════
    TOOLTIP
-───────────────────────────────────────────────── */
-function addNodeTooltip(g, nodeData, type) {
-  g.addEventListener('mouseenter', (e) => {
-    const info = type === 'process'
-      ? `Process: ${nodeData.id}\nEdges: ${state.edges.filter(e => e.from === nodeData.id || e.to === nodeData.id).length}`
-      : `Resource: ${nodeData.id}\nInstances: ${nodeData.instances}\nAllocated to: ${state.edges.filter(e => e.from === nodeData.id).map(e => e.to).join(', ') || 'none'}`;
-    showTooltip(e, info);
-  });
-  g.addEventListener('mousemove', moveTooltip);
-  g.addEventListener('mouseleave', hideTooltip);
+════════════════════════════════════════════════════ */
+.tooltip {
+  position: absolute;
+  background: rgba(8,8,18,0.94);
+  border: 1px solid var(--border-bright);
+  border-radius: 10px;
+  padding: 9px 13px;
+  font-size: 0.67rem;
+  color: var(--text);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.18s;
+  z-index: 60;
+  max-width: 210px;
+  line-height: 1.65;
+  backdrop-filter: blur(14px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+}
+.tooltip.visible { opacity: 1; }
+
+[data-theme="light"] .tooltip {
+  background: rgba(245,243,255,0.96);
 }
 
-function showTooltip(e, text) {
-  tooltip.innerHTML = text.replace(/\n/g, '<br/>');
-  tooltip.classList.add('visible');
-  moveTooltip(e);
-}
-function moveTooltip(e) {
-  const wrapper = document.querySelector('.canvas-wrapper').getBoundingClientRect();
-  tooltip.style.left = (e.clientX - wrapper.left + 12) + 'px';
-  tooltip.style.top  = (e.clientY - wrapper.top  + 12) + 'px';
-}
-function hideTooltip() { tooltip.classList.remove('visible'); }
-
-/* ─────────────────────────────────────────────────
-   SVG VIEWBOX (auto-resize)
-───────────────────────────────────────────────── */
-function updateViewBox() {
-  const wrapper = document.querySelector('.canvas-wrapper');
-  const { width, height } = wrapper.getBoundingClientRect();
-  svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
-}
-window.addEventListener('resize', () => { updateViewBox(); render(); });
-updateViewBox();
-
-/* ─────────────────────────────────────────────────
-   NODE POSITIONS (spread across canvas)
-───────────────────────────────────────────────── */
-function getSpawnPosition(index, total) {
-  const wrapper = document.querySelector('.canvas-wrapper');
-  const { width, height } = wrapper.getBoundingClientRect();
-  const cx = width / 2, cy = height / 2;
-  const radius = Math.min(width, height) * 0.35;
-  if (total <= 1) return { x: cx, y: cy };
-  const angle = (index / total) * Math.PI * 2 - Math.PI / 2;
-  return {
-    x: cx + radius * Math.cos(angle),
-    y: cy + radius * Math.sin(angle),
-  };
+/* ════════════════════════════════════════════════════
+   DEADLOCK / JAM LIST
+════════════════════════════════════════════════════ */
+.deadlock-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
 }
 
-/* ─────────────────────────────────────────────────
-   ADD / REMOVE NODES
-───────────────────────────────────────────────── */
-document.getElementById('addProcessBtn').addEventListener('click', () => {
-  state.processCount++;
-  const id = `P${state.processCount}`;
-  const pos = getSpawnPosition(state.processes.length, state.processes.length + 1);
-  state.processes.push({ id, x: pos.x, y: pos.y });
-  log(`Added process ${id}`, 'accent');
-  clearDeadlock();
-  render();
-});
+.deadlock-tag {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 11px;
+  border-radius: var(--radius-xs);
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: rgba(251,77,109,0.1);
+  border: 1px solid rgba(251,77,109,0.3);
+  color: var(--danger);
+  animation: slide-in 0.22s ease;
+}
+.deadlock-tag::before { content: '💻'; font-size: 0.8rem; }
 
-document.getElementById('addResourceBtn').addEventListener('click', () => {
-  state.resourceCount++;
-  const id = `R${state.resourceCount}`;
-  const instances = parseInt(document.getElementById('resourceInstances').value) || 1;
-  const pos = getSpawnPosition(state.resources.length, state.resources.length + 1);
-  state.resources.push({ id, x: pos.x, y: pos.y, instances });
-  log(`Added resource ${id} (${instances} instance${instances > 1 ? 's' : ''})`, 'accent');
-  clearDeadlock();
-  render();
-});
+.muted { font-size: 0.67rem; color: var(--text-muted); font-style: italic; }
 
-function removeNode(id) {
-  if (isProcess(id)) {
-    state.processes = state.processes.filter(p => p.id !== id);
-  } else {
-    state.resources = state.resources.filter(r => r.id !== id);
-  }
-  // Remove all edges involving this node
-  state.edges = state.edges.filter(e => e.from !== id && e.to !== id);
-  log(`Removed node ${id} and its edges`, 'warn');
-  clearDeadlock();
-  render();
+/* ════════════════════════════════════════════════════
+   STATS STRIP
+════════════════════════════════════════════════════ */
+.stats-strip {
+  flex-direction: row !important;
+  align-items: center;
+  justify-content: space-around;
+  padding: 10px 8px !important;
 }
 
-/* ─────────────────────────────────────────────────
-   ADD EDGE
-───────────────────────────────────────────────── */
-document.getElementById('addEdgeBtn').addEventListener('click', () => {
-  const from = edgeFrom.value;
-  const to   = edgeTo.value;
-  if (!from || !to || from === to) return alert('Select two different nodes.');
-
-  // Validate: R→P (alloc) or P→R (request)
-  if (isProcess(from) && isProcess(to)) return alert('Cannot connect two processes directly.');
-  if (isResource(from) && isResource(to)) return alert('Cannot connect two resources directly.');
-
-  const type = isResource(from) ? 'alloc' : 'request';
-
-  // Duplicate check
-  if (state.edges.find(e => e.from === from && e.to === to)) {
-    return alert('This edge already exists.');
-  }
-
-  // Allocation limit check
-  if (type === 'alloc') {
-    const res = state.resources.find(r => r.id === from);
-    const allocated = state.edges.filter(e => e.from === from && e.type === 'alloc').length;
-    if (allocated >= res.instances) {
-      return alert(`${from} only has ${res.instances} instance(s). All allocated.`);
-    }
-  }
-
-  state.edges.push({ from, to, type });
-  log(`Added edge: ${from} → ${to} (${type})`, 'info');
-  clearDeadlock();
-  render();
-});
-
-/* ─────────────────────────────────────────────────
-   SELECT UPDATES
-───────────────────────────────────────────────── */
-function updateSelects() {
-  const allNodes = [...state.processes.map(p => p.id), ...state.resources.map(r => r.id)];
-  [edgeFrom, edgeTo].forEach(sel => {
-    const prev = sel.value;
-    sel.innerHTML = allNodes.map(id => `<option value="${id}">${id}</option>`).join('');
-    if (allNodes.includes(prev)) sel.value = prev;
-  });
+.stat-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
 }
 
-function updateNodeList() {
-  nodeListEl.innerHTML = '';
-  [...state.processes, ...state.resources].forEach(n => {
-    const div = document.createElement('div');
-    const type = isProcess(n.id) ? 'process' : 'resource';
-    div.className = `node-item ${type}-item`;
-    div.innerHTML = `
-      <span>${n.id}${isResource(n.id) ? ` (×${n.instances})` : ''}</span>
-      <button class="node-del" data-id="${n.id}" title="Remove">✕</button>
-    `;
-    nodeListEl.appendChild(div);
-  });
-
-  // delete buttons
-  nodeListEl.querySelectorAll('.node-del').forEach(btn => {
-    btn.addEventListener('click', () => removeNode(btn.dataset.id));
-  });
+.stat-num {
+  font-family: 'Syne', sans-serif;
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--purple-light);
+  line-height: 1;
+  transition: color 0.3s;
 }
 
-/* ─────────────────────────────────────────────────
-   DEADLOCK DETECTION — DFS cycle detection
-───────────────────────────────────────────────── */
-function buildAdjacency() {
-  // Build adjacency list from edges
-  // For cycle detection: traverse P→R→P chains
-  const adj = {};
-  [...state.processes, ...state.resources].forEach(n => adj[n.id] = []);
-  state.edges.forEach(e => {
-    adj[e.from].push(e.to);
-  });
-  return adj;
+.stat-label {
+  font-size: 0.55rem;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+  text-align: center;
 }
 
-/**
- * Find all cycles in the directed graph using DFS.
- * Returns array of cycles (each cycle = array of node ids).
- */
-function findCycles() {
-  const adj = buildAdjacency();
-  const all  = [...state.processes.map(p => p.id), ...state.resources.map(r => r.id)];
-  const visited = new Set();
-  const recStack = new Set();
-  const cycles = [];
-
-  function dfs(node, path) {
-    visited.add(node);
-    recStack.add(node);
-    path.push(node);
-
-    for (const neighbor of (adj[node] || [])) {
-      if (!visited.has(neighbor)) {
-        dfs(neighbor, path);
-      } else if (recStack.has(neighbor)) {
-        // Found a cycle — extract it
-        const cycleStart = path.indexOf(neighbor);
-        cycles.push(path.slice(cycleStart));
-      }
-    }
-
-    path.pop();
-    recStack.delete(node);
-  }
-
-  all.forEach(node => {
-    if (!visited.has(node)) dfs(node, []);
-  });
-
-  return cycles;
+.stat-divider {
+  width: 1px; height: 28px;
+  background: var(--border);
 }
 
-function detectDeadlock() {
-  const cycles = findCycles();
-  clearDeadlock();
+/* ════════════════════════════════════════════════════
+   SIMULATION LOG
+════════════════════════════════════════════════════ */
+.log-section { flex: 1; }
 
-  if (cycles.length === 0) {
-    setStatus('safe', '💚', 'No Deadlock Detected 💚 — System is safe');
-    log('No cycles found. System is safe.', 'ok');
-    deadlockList.innerHTML = '<span class="muted">No deadlock 💚</span>';
-    resolutionSection.style.display = 'none';
-    return;
-  }
-
-  // Collect all process nodes in cycles
-  const deadlockedSet = new Set();
-  cycles.forEach(cycle => {
-    cycle.forEach(id => {
-      if (isProcess(id)) deadlockedSet.add(id);
-    });
-  });
-
-  // Check if multi-instance resources involved
-  const cycleNodes = new Set(cycles.flat());
-  const hasMultiInstance = state.resources.some(r => cycleNodes.has(r.id) && r.instances > 1);
-
-  if (hasMultiInstance) {
-    setStatus('warn', '🟡', `Possible Deadlock 🟡 — Multi-instance resources involved`);
-    log(`Cycle detected with multi-instance resources — possible deadlock`, 'warn');
-    log(`Involved processes: ${[...deadlockedSet].join(', ')}`, 'warn');
-  } else {
-    setStatus('deadlock', '🔴', `Deadlock Detected 🔴 — ${deadlockedSet.size} process(es) blocked`);
-    log(`DEADLOCK DETECTED! Cycle found.`, 'danger');
-    log(`Deadlocked processes: ${[...deadlockedSet].join(', ')}`, 'danger');
-  }
-
-  state.deadlocked = [...deadlockedSet];
-
-  // Deadlock list UI
-  deadlockList.innerHTML = '';
-  state.deadlocked.forEach(id => {
-    const tag = document.createElement('div');
-    tag.className = 'deadlock-tag';
-    tag.innerHTML = `🔴 ${id}`;
-    deadlockList.appendChild(tag);
-  });
-
-  // Resolution dropdown
-  resolutionSection.style.display = 'block';
-  resolveTarget.innerHTML = state.deadlocked.map(id => `<option value="${id}">${id}</option>`).join('');
-
-  render(); // re-render to show red highlights
+.sim-log {
+  max-height: 220px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
 }
 
-function clearDeadlock() {
-  state.deadlocked = [];
-  setStatus('idle', '💤', 'Press "Detect Deadlock" to analyse the graph');
-  deadlockList.innerHTML = '<span class="muted">None detected yet</span>';
-  resolutionSection.style.display = 'none';
+.log-entry {
+  font-size: 0.6rem;
+  padding: 4px 9px;
+  border-radius: var(--radius-xs);
+  line-height: 1.55;
+  border-left: 2px solid transparent;
+  animation: slide-in 0.2s ease;
+  transition: background 0.2s;
+}
+.log-entry:hover { background: var(--surface3); }
+
+.log-info   { color: var(--text-muted); border-left-color: var(--border); }
+.log-ok     { color: var(--ok);     border-left-color: var(--ok);     background: rgba(16,185,129,0.05); }
+.log-warn   { color: var(--warn);   border-left-color: var(--warn);   background: rgba(249,115,22,0.05); }
+.log-danger { color: var(--danger); border-left-color: var(--danger); background: rgba(251,77,109,0.07); }
+.log-accent { color: var(--purple-light); border-left-color: var(--purple); background: rgba(139,92,246,0.06); }
+
+/* ════════════════════════════════════════════════════
+   MODAL — Step-by-Step
+════════════════════════════════════════════════════ */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(4,4,12,0.72);
+  backdrop-filter: blur(8px);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fade-in 0.22s ease;
 }
 
-function setStatus(type, icon, text) {
-  statusBanner.setAttribute('data-status', type);
-  statusIcon.textContent = icon;
-  statusText.textContent = text;
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
-document.getElementById('detectBtn').addEventListener('click', detectDeadlock);
+.modal {
+  width: 500px;
+  max-width: 95vw;
+  padding: 26px 28px;
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: modal-spring 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  border-color: var(--border-bright) !important;
+}
 
-/* ─────────────────────────────────────────────────
-   RESOLUTION
-───────────────────────────────────────────────── */
-document.getElementById('terminateBtn').addEventListener('click', () => {
-  const target = resolveTarget.value;
-  if (!target) return;
-  log(`Terminated process ${target} — removing from graph`, 'warn');
-  removeNode(target);
-  detectDeadlock();
-});
+@keyframes modal-spring {
+  from { opacity: 0; transform: translateY(32px) scale(0.93); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
 
-document.getElementById('preemptBtn').addEventListener('click', () => {
-  const target = resolveTarget.value;
-  if (!target) return;
-  // Remove all allocation edges TO this process (resources preempted back)
-  const removed = state.edges.filter(e => e.to === target && e.type === 'alloc');
-  state.edges = state.edges.filter(e => !(e.to === target && e.type === 'alloc'));
-  log(`Preempted ${removed.length} resource(s) from ${target}`, 'warn');
-  removed.forEach(e => log(`  ↳ ${e.from} reclaimed from ${target}`, 'info'));
-  detectDeadlock();
-  render();
-});
+.modal-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
 
-/* ─────────────────────────────────────────────────
-   RESET
-───────────────────────────────────────────────── */
-document.getElementById('resetBtn').addEventListener('click', () => {
-  state.processes = [];
-  state.resources = [];
-  state.edges = [];
-  state.deadlocked = [];
-  state.processCount = 0;
-  state.resourceCount = 0;
-  clearDeadlock();
-  log('Graph reset.', 'info');
-  render();
-});
+.modal-printer-icon { font-size: 1.8rem; flex-shrink: 0; }
 
-/* ─────────────────────────────────────────────────
-   RANDOM TEST CASE
-───────────────────────────────────────────────── */
-document.getElementById('randomBtn').addEventListener('click', () => {
-  // Reset first
-  state.processes = [];
-  state.resources = [];
-  state.edges = [];
-  state.deadlocked = [];
-  state.processCount = 0;
-  state.resourceCount = 0;
+.modal-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--purple-light);
+  line-height: 1.2;
+}
 
-  updateViewBox();
-  const wrapper = document.querySelector('.canvas-wrapper');
-  const { width, height } = wrapper.getBoundingClientRect();
+.modal-sub {
+  font-size: 0.62rem;
+  color: var(--text-muted);
+  margin-top: 3px;
+  font-style: italic;
+}
 
-  // Random counts
-  const numP = 3 + Math.floor(Math.random() * 2); // 3-4
-  const numR = 3 + Math.floor(Math.random() * 2); // 3-4
+.step-content {
+  font-size: 0.71rem;
+  line-height: 1.75;
+  min-height: 90px;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  padding: 13px 14px;
+  background: var(--surface2);
+  transition: background 0.3s;
+}
 
-  // Spawn processes in a circle
-  for (let i = 0; i < numP; i++) {
-    state.processCount++;
-    const angle = (i / numP) * Math.PI * 2 - Math.PI / 2;
-    state.processes.push({
-      id: `P${state.processCount}`,
-      x: width / 2 + Math.cos(angle) * width * 0.3,
-      y: height / 2 + Math.sin(angle) * height * 0.3,
-    });
-  }
+.step-highlight { color: var(--cyan-light); font-weight: 700; }
+.step-cycle     { color: var(--danger); font-weight: 700; }
+.step-ok        { color: var(--ok); font-weight: 700; }
 
-  // Spawn resources in inner circle
-  for (let i = 0; i < numR; i++) {
-    state.resourceCount++;
-    const angle = (i / numR) * Math.PI * 2;
-    const inst = Math.random() < 0.3 ? 2 : 1;
-    state.resources.push({
-      id: `R${state.resourceCount}`,
-      x: width / 2 + Math.cos(angle) * width * 0.15,
-      y: height / 2 + Math.sin(angle) * height * 0.15,
-      instances: inst,
-    });
-  }
+/* Step progress bar */
+.step-progress-track {
+  height: 3px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.step-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--purple), var(--cyan));
+  border-radius: 3px;
+  width: 0%;
+  transition: width 0.3s ease;
+}
 
-  // Build a deadlock scenario: P1→R1, R1→P2, P2→R2, R2→P1
-  const pIds = state.processes.map(p => p.id);
-  const rIds = state.resources.map(r => r.id);
+.modal-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
 
-  // Cycle: P1 requests R1, R1 allocated to P2, P2 requests R2, R2 allocated to P1
-  state.edges.push({ from: pIds[0], to: rIds[0], type: 'request' });
-  state.edges.push({ from: rIds[0], to: pIds[1], type: 'alloc' });
-  state.edges.push({ from: pIds[1], to: rIds[1], type: 'request' });
-  state.edges.push({ from: rIds[1], to: pIds[0], type: 'alloc' });
+/* ════════════════════════════════════════════════════
+   SCROLLBAR
+════════════════════════════════════════════════════ */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--purple); }
 
-  // Add some extra non-cycle edges
-  if (numP >= 3 && numR >= 3) {
-    state.edges.push({ from: pIds[2], to: rIds[2], type: 'request' });
-    state.edges.push({ from: rIds[2], to: pIds[2], type: 'alloc' });
-  }
+/* ════════════════════════════════════════════════════
+   RESPONSIVE
+════════════════════════════════════════════════════ */
+@media (max-width: 960px) {
+  :root { --panel-w: 230px; }
+}
 
-  log('Random test case generated (contains a deadlock cycle)', 'accent');
-  render();
-  setTimeout(detectDeadlock, 400);
-});
-
-/* ─────────────────────────────────────────────────
-   STEP-BY-STEP SIMULATION
-───────────────────────────────────────────────── */
-let stepState = null;
-
-document.getElementById('stepBtn').addEventListener('click', () => {
-  if (state.processes.length === 0) return alert('Add some nodes first.');
-
-  const adj = buildAdjacency();
-  const all = [...state.processes.map(p => p.id), ...state.resources.map(r => r.id)];
-
-  // Build step list
-  const steps = [];
-  steps.push({ text: `<span class="step-highlight">Starting DFS cycle detection...</span><br/>Nodes: ${all.join(', ')}` });
-
-  const visited  = new Set();
-  const recStack = new Set();
-  const foundCycles = [];
-
-  function dfsStep(node, path) {
-    visited.add(node);
-    recStack.add(node);
-    path.push(node);
-
-    steps.push({ text: `Visiting <span class="step-highlight">${node}</span> | path: ${path.join(' → ')}` });
-
-    for (const nb of (adj[node] || [])) {
-      if (!visited.has(nb)) {
-        steps.push({ text: `  Exploring edge <span class="step-highlight">${node} → ${nb}</span> (unvisited)` });
-        dfsStep(nb, path);
-      } else if (recStack.has(nb)) {
-        const cycle = path.slice(path.indexOf(nb));
-        foundCycles.push(cycle);
-        steps.push({ text: `  ⚠ Back-edge found: <span class="step-highlight">${node} → ${nb}</span><br/>  <span class="step-cycle">CYCLE: ${cycle.join(' → ')} → ${nb}</span>` });
-      } else {
-        steps.push({ text: `  Edge <span class="step-highlight">${node} → ${nb}</span> — already visited (no cycle here)` });
-      }
-    }
-
-    path.pop();
-    recStack.delete(node);
-    steps.push({ text: `Backtracking from <span class="step-highlight">${node}</span>` });
-  }
-
-  all.forEach(node => {
-    if (!visited.has(node)) dfsStep(node, []);
-  });
-
-  if (foundCycles.length === 0) {
-    steps.push({ text: `<span class="step-ok">✓ No cycles found. System is safe!</span>` });
-  } else {
-    steps.push({ text: `<span class="step-cycle">✗ ${foundCycles.length} cycle(s) found. Deadlock exists!</span>` });
-  }
-
-  stepState = { steps, index: 0 };
-  stepContent.innerHTML = steps[0].text;
-  stepModal.style.display = 'flex';
-});
-
-document.getElementById('nextStepBtn').addEventListener('click', () => {
-  if (!stepState) return;
-  stepState.index++;
-  if (stepState.index >= stepState.steps.length) {
-    stepState.index = stepState.steps.length - 1;
-    document.getElementById('nextStepBtn').textContent = 'Done ✓';
-  }
-  stepContent.innerHTML = stepState.steps[stepState.index].text;
-});
-
-document.getElementById('closeStepBtn').addEventListener('click', () => {
-  stepModal.style.display = 'none';
-  stepState = null;
-  document.getElementById('nextStepBtn').textContent = 'Next ▶';
-});
-
-/* ─────────────────────────────────────────────────
-   INITIAL RENDER
-───────────────────────────────────────────────── */
-render();
-log('Deadlock Visualizer ready. Welcome, Aarna! 🎓', 'ok');
+@media (max-width: 768px) {
+  .header-center { display: none; }
+  :root { --panel-w: 200px; }
+}
