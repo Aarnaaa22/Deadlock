@@ -3,153 +3,276 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Deadlock Visualizer — by Aarna</title>
+  <title>PrinterSync — Deadlock Simulator by Aarna</title>
   <link rel="stylesheet" href="style.css" />
   <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet" />
 </head>
 <body>
 
-  <!-- animated background canvas -->
+  <!-- ░░ ANIMATED BACKGROUND CANVAS ░░ -->
   <canvas id="bg-canvas"></canvas>
 
-  <!-- HEADER -->
+  <!-- ░░ HEADER ░░ -->
   <header class="site-header">
     <div class="header-left">
-      <span class="logo-icon">⬡</span>
-      <div>
-        <h1 class="site-title">Deadlock Visualizer</h1>
-        <p class="site-sub">by <span class="author">Aarna</span></p>
+      <!-- Animated printer icon -->
+      <div class="logo-wrap">
+        <span class="logo-icon">🖨️</span>
+        <div class="logo-paper-strip"></div>
+      </div>
+      <div class="header-titles">
+        <h1 class="site-title">PrinterSync</h1>
+        <p class="site-sub">Deadlock Simulator &nbsp;·&nbsp; by <span class="author">Aarna</span></p>
       </div>
     </div>
+
+    <div class="header-center">
+      <!-- Live "printer queue" ticker -->
+      <div class="queue-ticker" id="queueTicker">
+        <span class="ticker-dot"></span>
+        <span id="tickerText">System idle — no print jobs queued</span>
+      </div>
+    </div>
+
     <div class="header-right">
-      <button class="theme-toggle" id="themeToggle" title="Toggle light/dark">
+      <button class="theme-toggle" id="themeToggle" title="Toggle light / dark mode">
         <span class="toggle-icon" id="toggleIcon">☽</span>
       </button>
     </div>
   </header>
 
-  <!-- STATUS BANNER -->
+  <!-- ░░ STATUS BANNER ░░ -->
   <div class="status-banner" id="statusBanner" data-status="idle">
-    <span id="statusIcon">💤</span>
-    <span id="statusText">Graph is empty — add processes &amp; resources to begin</span>
+    <span class="status-pill" id="statusIcon">💤</span>
+    <span id="statusText">Print queue is empty — add computers &amp; printers to begin</span>
+    <div class="banner-scanner"></div>
   </div>
 
-  <!-- MAIN LAYOUT -->
+  <!-- ░░ MAIN LAYOUT ░░ -->
   <main class="app-layout">
 
-    <!-- LEFT CONTROL PANEL -->
+    <!-- ░░░ LEFT CONTROL PANEL ░░░ -->
     <aside class="control-panel glass" id="controlPanel">
 
+      <!-- ADD NODES -->
       <section class="panel-section">
-        <h3 class="section-title">➕ Add Nodes</h3>
-        <div class="input-row">
-          <button class="btn btn-process" id="addProcessBtn">Process</button>
-          <button class="btn btn-resource" id="addResourceBtn">Resource</button>
+        <h3 class="section-title">
+          <span class="title-icon">＋</span> Add Devices
+        </h3>
+        <div class="btn-pair">
+          <!-- Processes = Computers -->
+          <button class="btn btn-process" id="addProcessBtn">
+            <span class="btn-icon">💻</span>
+            <span>Add Computer</span>
+          </button>
+          <!-- Resources = Printers -->
+          <button class="btn btn-resource" id="addResourceBtn">
+            <span class="btn-icon">🖨️</span>
+            <span>Add Printer</span>
+          </button>
         </div>
         <div class="input-row mt-sm">
-          <label class="small-label">Instances (for next resource)</label>
+          <label class="small-label">Print slots<br/><span class="label-hint">(instances for next printer)</span></label>
           <input type="number" id="resourceInstances" value="1" min="1" max="9" class="num-input" />
         </div>
       </section>
 
+      <!-- ADD EDGE -->
       <section class="panel-section">
-        <h3 class="section-title">🔗 Add Edge</h3>
+        <h3 class="section-title">
+          <span class="title-icon">⇄</span> Connect Devices
+        </h3>
         <div class="edge-form">
           <select id="edgeFrom" class="sel"></select>
           <span class="arrow-sym">→</span>
           <select id="edgeTo" class="sel"></select>
         </div>
-        <button class="btn btn-edge full-btn" id="addEdgeBtn">Add Edge</button>
-        <p class="hint">R→P = allocation &nbsp;|&nbsp; P→R = request</p>
+        <button class="btn btn-edge full-btn" id="addEdgeBtn">
+          🔗 Link Devices
+        </button>
+        <p class="hint">
+          🖨️→💻 = printer assigned &nbsp;|&nbsp; 💻→🖨️ = job requested
+        </p>
       </section>
 
+      <!-- ACTIONS -->
       <section class="panel-section">
-        <h3 class="section-title">⚡ Actions</h3>
-        <button class="btn btn-detect full-btn" id="detectBtn">🔍 Detect Deadlock</button>
-        <button class="btn btn-step full-btn" id="stepBtn">▶ Step-by-Step</button>
-        <button class="btn btn-random full-btn" id="randomBtn">🎲 Random Case</button>
-        <button class="btn btn-reset full-btn" id="resetBtn">⟳ Reset All</button>
+        <h3 class="section-title">
+          <span class="title-icon">⚡</span> Simulate
+        </h3>
+        <button class="btn btn-detect full-btn" id="detectBtn">
+          🔍 Detect Printer Jam
+        </button>
+        <button class="btn btn-step full-btn" id="stepBtn">
+          ▶ Step-by-Step Trace
+        </button>
+        <button class="btn btn-random full-btn" id="randomBtn">
+          🎲 Random Print Scenario
+        </button>
+        <button class="btn btn-reset full-btn" id="resetBtn">
+          ⟳ Clear Queue
+        </button>
       </section>
 
-      <section class="panel-section" id="resolutionSection" style="display:none;">
-        <h3 class="section-title">🛠 Resolution</h3>
+      <!-- RESOLUTION — shown only on deadlock -->
+      <section class="panel-section resolution-panel" id="resolutionSection" style="display:none;">
+        <h3 class="section-title danger-title">
+          <span class="title-icon">🛠</span> Unjam Printer
+        </h3>
+        <p class="hint resolve-hint">Select a computer to fix the jam:</p>
         <select id="resolveTarget" class="sel full-sel"></select>
-        <div class="input-row mt-sm">
-          <button class="btn btn-terminate" id="terminateBtn">✕ Terminate</button>
-          <button class="btn btn-preempt" id="preemptBtn">⇥ Preempt</button>
+        <div class="btn-pair mt-sm">
+          <button class="btn btn-terminate" id="terminateBtn">
+            <span class="btn-icon">✕</span> Kill Job
+          </button>
+          <button class="btn btn-preempt" id="preemptBtn">
+            <span class="btn-icon">⇥</span> Preempt
+          </button>
         </div>
+        <p class="hint">
+          <b>Kill Job:</b> removes computer entirely<br/>
+          <b>Preempt:</b> reclaims its printers
+        </p>
       </section>
 
+      <!-- NODE LIST -->
       <section class="panel-section">
-        <h3 class="section-title">📋 Node List</h3>
+        <h3 class="section-title">
+          <span class="title-icon">📋</span> Device List
+        </h3>
         <div id="nodeList" class="node-list"></div>
       </section>
 
     </aside>
 
-    <!-- SVG GRAPH CANVAS -->
+    <!-- ░░░ SVG GRAPH CANVAS ░░░ -->
     <div class="canvas-wrapper">
       <svg id="graphSvg" class="graph-svg">
         <defs>
+          <!-- Normal arrow -->
           <marker id="arrow" markerWidth="10" markerHeight="7"
                   refX="9" refY="3.5" orient="auto">
             <polygon points="0 0, 10 3.5, 0 7" class="arrowhead" />
           </marker>
+          <!-- Cycle / deadlock arrow -->
           <marker id="arrow-cycle" markerWidth="10" markerHeight="7"
                   refX="9" refY="3.5" orient="auto">
             <polygon points="0 0, 10 3.5, 0 7" class="arrowhead-cycle" />
           </marker>
-          <filter id="glow">
+          <!-- Soft glow filter -->
+          <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
             <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
             <feMerge>
               <feMergeNode in="coloredBlur"/>
               <feMergeNode in="SourceGraphic"/>
             </feMerge>
           </filter>
-          <filter id="glow-strong">
+          <!-- Strong glow filter (deadlock) -->
+          <filter id="glow-strong" x="-50%" y="-50%" width="200%" height="200%">
             <feGaussianBlur stdDeviation="7" result="coloredBlur"/>
             <feMerge>
               <feMergeNode in="coloredBlur"/>
               <feMergeNode in="SourceGraphic"/>
             </feMerge>
           </filter>
+          <!-- Printing glow filter (allocation edge active) -->
+          <filter id="glow-print" x="-30%" y="-30%" width="160%" height="160%">
+            <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+            <feMerge>
+              <feMergeNode in="coloredBlur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
         </defs>
+
         <g id="edgesGroup"></g>
         <g id="nodesGroup"></g>
       </svg>
 
+      <!-- Empty-state hint -->
       <div class="canvas-empty-hint" id="canvasHint">
-        <div class="hint-icon">◈</div>
-        <p>Add processes &amp; resources<br/>then connect them with edges</p>
+        <div class="hint-scene">
+          <span class="hint-printer">🖨️</span>
+          <span class="hint-arrow-anim">←→</span>
+          <span class="hint-computer">💻</span>
+        </div>
+        <p class="hint-title">Your print network is empty</p>
+        <p class="hint-sub">Add 💻 computers &amp; 🖨️ printers,<br/>then connect them to simulate print jobs.</p>
+        <p class="hint-challenge">Can you resolve the printer jam before the system crashes? 😅</p>
       </div>
 
+      <!-- Floating tooltip -->
       <div class="tooltip" id="tooltip"></div>
+
+      <!-- Corner legend -->
+      <div class="canvas-legend">
+        <span class="legend-item alloc-legend">── assigned</span>
+        <span class="legend-item req-legend">╌╌ requested</span>
+        <span class="legend-item cycle-legend">── jammed</span>
+      </div>
     </div>
 
-    <!-- RIGHT INFO PANEL -->
+    <!-- ░░░ RIGHT INFO PANEL ░░░ -->
     <aside class="info-panel glass">
+
+      <!-- Jammed computers -->
       <section class="panel-section">
-        <h3 class="section-title">🔴 Deadlocked Processes</h3>
+        <h3 class="section-title danger-title">
+          <span class="title-icon">🔴</span> Jammed Computers
+        </h3>
         <div id="deadlockList" class="deadlock-list">
-          <span class="muted">None detected yet</span>
+          <span class="muted">✅ No jams detected yet</span>
         </div>
       </section>
+
+      <!-- Stats strip -->
+      <section class="panel-section stats-strip">
+        <div class="stat-box">
+          <span class="stat-num" id="statComputers">0</span>
+          <span class="stat-label">💻 Computers</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-box">
+          <span class="stat-num" id="statPrinters">0</span>
+          <span class="stat-label">🖨️ Printers</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-box">
+          <span class="stat-num" id="statEdges">0</span>
+          <span class="stat-label">🔗 Links</span>
+        </div>
+      </section>
+
+      <!-- Simulation log -->
       <section class="panel-section log-section">
-        <h3 class="section-title">📜 Simulation Log</h3>
+        <h3 class="section-title">
+          <span class="title-icon">📜</span> Print Queue Log
+        </h3>
         <div id="simLog" class="sim-log"></div>
       </section>
+
     </aside>
 
   </main>
 
-  <!-- STEP-BY-STEP MODAL -->
+  <!-- ░░ STEP-BY-STEP MODAL ░░ -->
   <div class="modal-overlay" id="stepModal" style="display:none;">
     <div class="modal glass">
-      <h3 class="modal-title">Step-by-Step Detection</h3>
+      <div class="modal-header">
+        <span class="modal-printer-icon">🔍</span>
+        <div>
+          <h3 class="modal-title">Step-by-Step Jam Trace</h3>
+          <p class="modal-sub">DFS cycle detection — following print job paths</p>
+        </div>
+      </div>
       <div id="stepContent" class="step-content"></div>
+      <!-- Progress bar -->
+      <div class="step-progress-track">
+        <div class="step-progress-bar" id="stepProgressBar"></div>
+      </div>
       <div class="modal-actions">
-        <button class="btn btn-step" id="nextStepBtn">Next ▶</button>
-        <button class="btn btn-reset" id="closeStepBtn">Close</button>
+        <button class="btn btn-step" id="nextStepBtn">Next Step ▶</button>
+        <button class="btn btn-reset" id="closeStepBtn">✕ Close</button>
       </div>
     </div>
   </div>
