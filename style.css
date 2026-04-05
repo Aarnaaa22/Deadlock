@@ -1,693 +1,954 @@
-/* ═══════════════════════════════════════════════════
-   Deadlock Visualizer — style.css
-   By Aarna  |  Space Mono + Syne  |  Neon-dark theme
-═══════════════════════════════════════════════════ */
-
-/* ── FONTS ── */
-@import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap');
-
-/* ── CSS VARIABLES ── */
-:root {
-  /* Dark theme defaults */
-  --bg:          #0a0a12;
-  --bg2:         #0f0f1e;
-  --surface:     rgba(255,255,255,0.04);
-  --surface2:    rgba(255,255,255,0.08);
-  --border:      rgba(255,255,255,0.08);
-  --text:        #e8e4f0;
-  --text-muted:  #6b6880;
-  --accent:      #7c5cfc;
-  --accent2:     #c77dff;
-  --teal:        #38d9c0;
-  --process-col: #7c5cfc;
-  --resource-col:#38d9c0;
-  --danger:      #ff4d6d;
-  --warn:        #ff9f1c;
-  --ok:          #06d6a0;
-  --panel-w:     260px;
-  --header-h:    64px;
-  --radius:      14px;
-  --radius-sm:   8px;
-  --glow-p:      0 0 18px rgba(124,92,252,0.5);
-  --glow-r:      0 0 18px rgba(56,217,192,0.5);
-  --glow-bad:    0 0 22px rgba(255,77,109,0.6);
-  --transition:  0.35s cubic-bezier(0.4,0,0.2,1);
-}
-
-[data-theme="light"] {
-  --bg:          #f0eeff;
-  --bg2:         #e8e4f8;
-  --surface:     rgba(255,255,255,0.7);
-  --surface2:    rgba(255,255,255,0.85);
-  --border:      rgba(0,0,0,0.1);
-  --text:        #1a1630;
-  --text-muted:  #7a7490;
-  --accent:      #5b35d5;
-  --accent2:     #9b4dca;
-  --teal:        #1ab8a0;
-  --process-col: #5b35d5;
-  --resource-col:#1ab8a0;
-  --glow-p:      0 0 12px rgba(91,53,213,0.3);
-  --glow-r:      0 0 12px rgba(26,184,160,0.3);
-  --glow-bad:    0 0 16px rgba(255,77,109,0.4);
-}
-
-/* ── RESET ── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-html, body {
-  height: 100%;
-  font-family: 'Space Mono', monospace;
-  background: var(--bg);
-  color: var(--text);
-  overflow: hidden;
-  transition: background var(--transition), color var(--transition);
-}
-
-/* ── ANIMATED BG ── */
-#bg-canvas {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  opacity: 0.35;
-  pointer-events: none;
-}
-
-/* ── GLASSMORPHISM ── */
-.glass {
-  background: var(--surface);
-  backdrop-filter: blur(18px) saturate(160%);
-  -webkit-backdrop-filter: blur(18px) saturate(160%);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-}
-
-/* ── HEADER ── */
-.site-header {
-  position: fixed;
-  top: 0; left: 0; right: 0;
-  height: var(--header-h);
-  z-index: 100;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 24px;
-  background: var(--surface);
-  backdrop-filter: blur(20px);
-  border-bottom: 1px solid var(--border);
-  transition: background var(--transition);
-}
-
-.header-left { display: flex; align-items: center; gap: 14px; }
-
-.logo-icon {
-  font-size: 28px;
-  color: var(--accent);
-  filter: drop-shadow(0 0 10px var(--accent));
-  animation: pulse-logo 3s ease-in-out infinite;
-}
-
-@keyframes pulse-logo {
-  0%,100% { filter: drop-shadow(0 0 8px var(--accent)); }
-  50%      { filter: drop-shadow(0 0 20px var(--accent2)); }
-}
-
-.site-title {
-  font-family: 'Syne', sans-serif;
-  font-size: 1.25rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  background: linear-gradient(135deg, var(--accent), var(--accent2), var(--teal));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.site-sub {
-  font-size: 0.65rem;
-  color: var(--text-muted);
-  letter-spacing: 0.05em;
-}
-
-.author {
-  color: var(--accent2);
-  font-style: italic;
-}
-
-/* THEME TOGGLE */
-.theme-toggle {
-  width: 42px; height: 42px;
-  border-radius: 50%;
-  border: 1px solid var(--border);
-  background: var(--surface2);
-  cursor: pointer;
-  font-size: 1.1rem;
-  display: grid; place-items: center;
-  transition: all var(--transition);
-  color: var(--text);
-}
-.theme-toggle:hover {
-  background: var(--accent);
-  border-color: var(--accent);
-  transform: rotate(20deg) scale(1.1);
-}
-
-/* ── STATUS BANNER ── */
-.status-banner {
-  position: fixed;
-  top: var(--header-h);
-  left: 0; right: 0;
-  z-index: 90;
-  padding: 10px 24px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 0.78rem;
-  font-family: 'Syne', sans-serif;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  transition: background var(--transition), color var(--transition);
-}
-
-.status-banner[data-status="deadlock"] {
-  background: rgba(255,77,109,0.12);
-  border-bottom-color: rgba(255,77,109,0.4);
-  color: #ff4d6d;
-  animation: banner-pulse 1.5s ease-in-out infinite;
-}
-
-.status-banner[data-status="safe"] {
-  background: rgba(6,214,160,0.1);
-  border-bottom-color: rgba(6,214,160,0.3);
-  color: var(--ok);
-}
-
-.status-banner[data-status="warn"] {
-  background: rgba(255,159,28,0.1);
-  border-bottom-color: rgba(255,159,28,0.3);
-  color: var(--warn);
-}
-
-@keyframes banner-pulse {
-  0%,100% { background: rgba(255,77,109,0.08); }
-  50%      { background: rgba(255,77,109,0.18); }
-}
-
-/* ── APP LAYOUT ── */
-.app-layout {
-  position: fixed;
-  top: calc(var(--header-h) + 41px);
-  left: 0; right: 0; bottom: 0;
-  display: grid;
-  grid-template-columns: var(--panel-w) 1fr var(--panel-w);
-  gap: 12px;
-  padding: 12px;
-  z-index: 10;
-  overflow: hidden;
-}
-
-/* ── PANELS ── */
-.control-panel, .info-panel {
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: 14px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  scrollbar-width: thin;
-  scrollbar-color: var(--border) transparent;
-}
-
-.panel-section {
-  background: var(--surface2);
-  border-radius: var(--radius-sm);
-  padding: 12px;
-  border: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  transition: border-color var(--transition);
-}
-
-.section-title {
-  font-family: 'Syne', sans-serif;
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  margin-bottom: 2px;
-}
-
-/* ── BUTTONS ── */
-.btn {
-  font-family: 'Space Mono', monospace;
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  padding: 8px 12px;
-  border-radius: var(--radius-sm);
-  border: 1px solid transparent;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  white-space: nowrap;
-  position: relative;
-  overflow: hidden;
-}
-
-.btn::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: white;
-  opacity: 0;
-  transition: opacity 0.15s;
-}
-.btn:active::after { opacity: 0.1; }
-
-.btn-process {
-  background: rgba(124,92,252,0.15);
-  border-color: rgba(124,92,252,0.4);
-  color: var(--process-col);
-}
-.btn-process:hover {
-  background: rgba(124,92,252,0.3);
-  box-shadow: var(--glow-p);
-  transform: translateY(-1px);
-}
-
-.btn-resource {
-  background: rgba(56,217,192,0.1);
-  border-color: rgba(56,217,192,0.35);
-  color: var(--resource-col);
-}
-.btn-resource:hover {
-  background: rgba(56,217,192,0.25);
-  box-shadow: var(--glow-r);
-  transform: translateY(-1px);
-}
-
-.btn-edge {
-  background: rgba(255,255,255,0.06);
-  border-color: var(--border);
-  color: var(--text);
-}
-.btn-edge:hover { background: var(--surface2); transform: translateY(-1px); }
-
-.btn-detect {
-  background: linear-gradient(135deg, rgba(124,92,252,0.3), rgba(199,125,255,0.2));
-  border-color: rgba(124,92,252,0.5);
-  color: var(--accent2);
-}
-.btn-detect:hover {
-  background: linear-gradient(135deg, rgba(124,92,252,0.5), rgba(199,125,255,0.35));
-  box-shadow: 0 0 20px rgba(124,92,252,0.4);
-  transform: translateY(-1px);
-}
-
-.btn-step {
-  background: rgba(56,217,192,0.12);
-  border-color: rgba(56,217,192,0.3);
-  color: var(--teal);
-}
-.btn-step:hover { background: rgba(56,217,192,0.25); transform: translateY(-1px); }
-
-.btn-random {
-  background: rgba(255,159,28,0.1);
-  border-color: rgba(255,159,28,0.3);
-  color: var(--warn);
-}
-.btn-random:hover { background: rgba(255,159,28,0.2); transform: translateY(-1px); }
-
-.btn-reset {
-  background: rgba(255,255,255,0.04);
-  border-color: var(--border);
-  color: var(--text-muted);
-}
-.btn-reset:hover { color: var(--text); background: var(--surface2); }
-
-.btn-terminate {
-  background: rgba(255,77,109,0.12);
-  border-color: rgba(255,77,109,0.35);
-  color: var(--danger);
-}
-.btn-terminate:hover { background: rgba(255,77,109,0.25); box-shadow: var(--glow-bad); }
-
-.btn-preempt {
-  background: rgba(255,159,28,0.1);
-  border-color: rgba(255,159,28,0.3);
-  color: var(--warn);
-}
-.btn-preempt:hover { background: rgba(255,159,28,0.22); }
-
-.full-btn { width: 100%; }
-
-/* ── INPUTS / SELECTS ── */
-.sel, .num-input {
-  font-family: 'Space Mono', monospace;
-  font-size: 0.7rem;
-  background: var(--bg2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  color: var(--text);
-  padding: 6px 8px;
-  transition: border-color 0.2s;
-  outline: none;
-}
-.sel:focus, .num-input:focus { border-color: var(--accent); }
-
-.num-input { width: 60px; text-align: center; }
-
-.full-sel { width: 100%; }
-
-.input-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.mt-sm { margin-top: 4px; }
-
-.edge-form {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.edge-form .sel { flex: 1; }
-
-.arrow-sym { color: var(--accent); font-weight: 700; }
-
-.small-label {
-  font-size: 0.62rem;
-  color: var(--text-muted);
-  flex: 1;
-  line-height: 1.3;
-}
-
-.hint {
-  font-size: 0.6rem;
-  color: var(--text-muted);
-  font-style: italic;
-  line-height: 1.4;
-}
-
-/* ── NODE LIST ── */
-.node-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  max-height: 160px;
-  overflow-y: auto;
-}
-
-.node-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 5px 8px;
-  border-radius: 6px;
-  font-size: 0.68rem;
-  border: 1px solid transparent;
-  transition: all 0.2s;
-  animation: slide-in 0.25s ease;
-}
-.node-item.process-item {
-  background: rgba(124,92,252,0.08);
-  border-color: rgba(124,92,252,0.2);
-  color: var(--process-col);
-}
-.node-item.resource-item {
-  background: rgba(56,217,192,0.07);
-  border-color: rgba(56,217,192,0.2);
-  color: var(--resource-col);
-}
-.node-item:hover { transform: translateX(2px); }
-
-.node-del {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  font-size: 0.75rem;
-  padding: 0 2px;
-  transition: color 0.15s;
-}
-.node-del:hover { color: var(--danger); }
-
-@keyframes slide-in {
-  from { opacity: 0; transform: translateX(-10px); }
-  to   { opacity: 1; transform: translateX(0); }
-}
-
-/* ── CANVAS WRAPPER ── */
-.canvas-wrapper {
-  position: relative;
-  border-radius: var(--radius);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  overflow: hidden;
-  backdrop-filter: blur(12px);
-}
-
-.graph-svg {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-
-.canvas-empty-hint {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-muted);
-  font-family: 'Syne', sans-serif;
-  font-size: 0.85rem;
-  gap: 10px;
-  pointer-events: none;
-  transition: opacity 0.3s;
-  text-align: center;
-  line-height: 1.7;
-}
-
-.hint-icon {
-  font-size: 2.5rem;
-  color: var(--accent);
-  opacity: 0.4;
-  animation: float 3s ease-in-out infinite;
-}
-
-@keyframes float {
-  0%,100% { transform: translateY(0); }
-  50%      { transform: translateY(-8px); }
-}
-
-/* ── SVG NODES ── */
-.node-circle {
-  cursor: grab;
-  transition: filter 0.2s;
-}
-.node-circle:active { cursor: grabbing; }
-.node-circle:hover  { filter: url(#glow); }
-
-.process-node { fill: rgba(124,92,252,0.15); stroke: var(--process-col); stroke-width: 2; }
-.resource-node { fill: rgba(56,217,192,0.12); stroke: var(--resource-col); stroke-width: 2; }
-
-.node-label {
-  font-family: 'Syne', sans-serif;
-  font-size: 11px;
-  font-weight: 700;
-  fill: var(--text);
-  pointer-events: none;
-  user-select: none;
-  text-anchor: middle;
-  dominant-baseline: middle;
-}
-
-.instance-dot { fill: var(--resource-col); opacity: 0.7; }
-
-/* DEADLOCK highlight */
-.node-deadlock { animation: deadlock-pulse 1s ease-in-out infinite; }
-
-@keyframes deadlock-pulse {
-  0%,100% { filter: url(#glow); stroke: var(--danger); stroke-width: 2.5; }
-  50%      { filter: url(#glow-strong); stroke: #ff8fa3; stroke-width: 3.5; }
-}
-
-/* ── SVG EDGES ── */
-.edge-line {
-  fill: none;
-  stroke-width: 1.8;
-  stroke-linecap: round;
-  transition: stroke 0.3s;
-  animation: edge-appear 0.3s ease;
-}
-
-.edge-alloc { stroke: var(--teal); opacity: 0.65; }
-.edge-request { stroke: var(--accent); opacity: 0.65; stroke-dasharray: 5 3; }
-.edge-cycle { stroke: var(--danger); opacity: 1; stroke-dasharray: none; animation: cycle-flash 0.8s ease-in-out infinite; }
-
-@keyframes edge-appear {
-  from { stroke-dashoffset: 200; opacity: 0; }
-  to   { stroke-dashoffset: 0; opacity: 1; }
-}
-
-@keyframes cycle-flash {
-  0%,100% { opacity: 0.7; stroke-width: 2; }
-  50%      { opacity: 1; stroke-width: 3; }
-}
-
-.arrowhead     { fill: var(--text-muted); }
-.arrowhead-cycle { fill: var(--danger); }
-
-/* ── TOOLTIP ── */
-.tooltip {
-  position: absolute;
-  background: rgba(10,10,18,0.92);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 8px 12px;
-  font-size: 0.68rem;
-  color: var(--text);
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.15s;
-  z-index: 50;
-  max-width: 200px;
-  line-height: 1.6;
-  backdrop-filter: blur(10px);
-}
-.tooltip.visible { opacity: 1; }
-
-/* ── DEADLOCK LIST ── */
-.deadlock-list {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.deadlock-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 10px;
-  border-radius: 6px;
-  font-size: 0.7rem;
-  font-weight: 700;
-  background: rgba(255,77,109,0.12);
-  border: 1px solid rgba(255,77,109,0.3);
-  color: var(--danger);
-  animation: slide-in 0.2s ease;
-}
-
-.muted { font-size: 0.68rem; color: var(--text-muted); font-style: italic; }
-
-/* ── SIM LOG ── */
-.log-section { flex: 1; }
-.sim-log {
-  max-height: 240px;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  scrollbar-width: thin;
-  scrollbar-color: var(--border) transparent;
-}
-
-.log-entry {
-  font-size: 0.62rem;
-  padding: 4px 8px;
-  border-radius: 5px;
-  line-height: 1.5;
-  border-left: 2px solid transparent;
-  animation: slide-in 0.2s ease;
-}
-.log-info    { color: var(--text-muted); border-left-color: var(--border); }
-.log-ok      { color: var(--ok); border-left-color: var(--ok); background: rgba(6,214,160,0.05); }
-.log-warn    { color: var(--warn); border-left-color: var(--warn); background: rgba(255,159,28,0.05); }
-.log-danger  { color: var(--danger); border-left-color: var(--danger); background: rgba(255,77,109,0.07); }
-.log-accent  { color: var(--accent2); border-left-color: var(--accent); background: rgba(124,92,252,0.06); }
-
-/* ── MODAL ── */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.6);
-  backdrop-filter: blur(6px);
-  z-index: 200;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  animation: fade-in 0.2s ease;
-}
-
-@keyframes fade-in {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-
-.modal {
-  width: 480px;
-  max-width: 94vw;
-  padding: 28px;
-  border-radius: var(--radius);
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  animation: modal-up 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-@keyframes modal-up {
-  from { opacity: 0; transform: translateY(30px) scale(0.95); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-.modal-title {
-  font-family: 'Syne', sans-serif;
-  font-size: 1rem;
-  font-weight: 800;
-  color: var(--accent2);
-}
-
-.step-content {
-  font-size: 0.72rem;
-  line-height: 1.7;
-  min-height: 80px;
-  color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 12px;
-  background: var(--surface2);
-}
-
-.step-highlight {
-  color: var(--accent2);
-  font-weight: 700;
-}
-.step-cycle { color: var(--danger); font-weight: 700; }
-.step-ok    { color: var(--ok); font-weight: 700; }
-
-.modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
-
-/* ── SCROLLBAR ── */
-::-webkit-scrollbar { width: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
-
-/* ── RESOURCE SQUARE ── */
-.resource-rect {
-  rx: 5; ry: 5;
-  cursor: grab;
-}
-.resource-rect:active { cursor: grabbing; }
-
-/* ── RESPONSIVE HINT ── */
-@media (max-width: 900px) {
-  .app-layout {
-    grid-template-columns: 220px 1fr 200px;
-    --panel-w: 220px;
+/**
+ * ══════════════════════════════════════════════════════════
+ *  PrinterSync — Deadlock Simulator  |  script.js
+ *  By Aarna
+ *
+ *  Concept: Computers (💻 Processes) compete for Printers
+ *  (🖨️ Resources). When a circular wait forms, printers jam.
+ *
+ *  CORE LOGIC UNCHANGED — only UI text, labels, tooltips,
+ *  node rendering (emoji icons), and printer animation added.
+ *
+ *  Handles:
+ *   · Graph state management
+ *   · RAG rendering (SVG nodes + edges)
+ *   · DFS-based cycle / deadlock detection
+ *   · Step-by-step trace simulation
+ *   · Deadlock resolution (terminate / preempt)
+ *   · Drag-and-drop node movement
+ *   · Tooltip system
+ *   · Animated background canvas
+ *   · Live stats strip + queue ticker
+ * ══════════════════════════════════════════════════════════
+ */
+
+/* ─────────────────────────────────────────────────────────
+   GRAPH STATE
+   processes = Computers  |  resources = Printers
+───────────────────────────────────────────────────────── */
+const state = {
+  processes: [],   // { id, x, y }        — Computers
+  resources: [],   // { id, x, y, instances } — Printers
+  edges: [],       // { from, to, type: 'alloc'|'request' }
+  deadlocked: [],  // process (computer) ids in deadlock
+  processCount: 0,
+  resourceCount: 0,
+};
+
+/* ─────────────────────────────────────────────────────────
+   DOM REFERENCES
+───────────────────────────────────────────────────────── */
+const svg               = document.getElementById('graphSvg');
+const edgesGroup        = document.getElementById('edgesGroup');
+const nodesGroup        = document.getElementById('nodesGroup');
+const edgeFrom          = document.getElementById('edgeFrom');
+const edgeTo            = document.getElementById('edgeTo');
+const nodeListEl        = document.getElementById('nodeList');
+const deadlockList      = document.getElementById('deadlockList');
+const simLog            = document.getElementById('simLog');
+const statusBanner      = document.getElementById('statusBanner');
+const statusText        = document.getElementById('statusText');
+const statusIcon        = document.getElementById('statusIcon');
+const canvasHint        = document.getElementById('canvasHint');
+const tooltip           = document.getElementById('tooltip');
+const resolutionSection = document.getElementById('resolutionSection');
+const resolveTarget     = document.getElementById('resolveTarget');
+const stepModal         = document.getElementById('stepModal');
+const stepContent       = document.getElementById('stepContent');
+const tickerText        = document.getElementById('tickerText');
+const statComputers     = document.getElementById('statComputers');
+const statPrinters      = document.getElementById('statPrinters');
+const statEdges         = document.getElementById('statEdges');
+
+/* ─────────────────────────────────────────────────────────
+   ANIMATED BACKGROUND CANVAS
+   Drifting particles + grid lines
+───────────────────────────────────────────────────────── */
+(function initBgCanvas() {
+  const canvas = document.getElementById('bg-canvas');
+  const ctx    = canvas.getContext('2d');
+  let W, H, particles = [];
+
+  function resize() {
+    W = canvas.width  = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+
+  function spawnParticles() {
+    particles = [];
+    const count = Math.floor((W * H) / 20000);
+    for (let i = 0; i < count; i++) {
+      particles.push({
+        x:  Math.random() * W,
+        y:  Math.random() * H,
+        vx: (Math.random() - 0.5) * 0.28,
+        vy: (Math.random() - 0.5) * 0.28,
+        r:  Math.random() * 1.6 + 0.4,
+        // alternate between purple and cyan tones
+        hue: Math.random() < 0.5 ? 'purple' : 'cyan',
+      });
+    }
+  }
+
+  function drawGrid() {
+    const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+    ctx.strokeStyle = isDark
+      ? 'rgba(139,92,246,0.055)'
+      : 'rgba(109,40,217,0.045)';
+    ctx.lineWidth = 1;
+    const step = 55;
+    for (let x = 0; x < W; x += step) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+    }
+    for (let y = 0; y < H; y += step) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    }
+  }
+
+  function frame() {
+    ctx.clearRect(0, 0, W, H);
+    drawGrid();
+
+    const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+
+    particles.forEach(p => {
+      p.x += p.vx; p.y += p.vy;
+      if (p.x < 0) p.x = W; if (p.x > W) p.x = 0;
+      if (p.y < 0) p.y = H; if (p.y > H) p.y = 0;
+
+      const col = p.hue === 'purple'
+        ? (isDark ? 'rgba(139,92,246,0.55)' : 'rgba(109,40,217,0.3)')
+        : (isDark ? 'rgba(34,211,238,0.45)'  : 'rgba(8,145,178,0.3)');
+
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = col;
+      ctx.fill();
+    });
+
+    requestAnimationFrame(frame);
+  }
+
+  resize(); spawnParticles(); frame();
+  window.addEventListener('resize', () => { resize(); spawnParticles(); });
+})();
+
+/* ─────────────────────────────────────────────────────────
+   THEME TOGGLE (dark ↔ light)
+───────────────────────────────────────────────────────── */
+document.getElementById('themeToggle').addEventListener('click', () => {
+  const html   = document.documentElement;
+  const isDark = html.getAttribute('data-theme') === 'dark';
+  html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+  document.getElementById('toggleIcon').textContent = isDark ? '☀' : '☽';
+  log(`Display mode switched to ${isDark ? 'light' : 'dark'}`, 'info');
+});
+
+/* ─────────────────────────────────────────────────────────
+   LOGGING — print queue log panel
+───────────────────────────────────────────────────────── */
+function log(msg, type = 'info') {
+  const div = document.createElement('div');
+  div.className = `log-entry log-${type}`;
+  const ts = new Date().toLocaleTimeString('en-US', {
+    hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit'
+  });
+  div.textContent = `[${ts}] ${msg}`;
+  simLog.prepend(div);
+  while (simLog.children.length > 60) simLog.removeChild(simLog.lastChild);
+}
+
+/* ─────────────────────────────────────────────────────────
+   STATS STRIP + TICKER — live counts
+───────────────────────────────────────────────────────── */
+function updateStats() {
+  const nP = state.processes.length;
+  const nR = state.resources.length;
+  const nE = state.edges.length;
+  statComputers.textContent = nP;
+  statPrinters.textContent  = nR;
+  statEdges.textContent     = nE;
+
+  // Update header ticker
+  if (nP === 0 && nR === 0) {
+    tickerText.textContent = 'System idle — no devices connected';
+  } else {
+    const allocCount   = state.edges.filter(e => e.type === 'alloc').length;
+    const requestCount = state.edges.filter(e => e.type === 'request').length;
+    tickerText.textContent =
+      `${nP} computer${nP !== 1 ? 's' : ''} · ${nR} printer${nR !== 1 ? 's' : ''} · ` +
+      `${allocCount} printing · ${requestCount} waiting`;
   }
 }
+
+/* ─────────────────────────────────────────────────────────
+   GEOMETRY HELPERS
+───────────────────────────────────────────────────────── */
+function getNodePos(id) {
+  const n = [...state.processes, ...state.resources].find(n => n.id === id);
+  return n ? { x: n.x, y: n.y } : null;
+}
+
+function isProcess(id)  { return id.startsWith('P'); }
+function isResource(id) { return id.startsWith('R'); }
+
+/**
+ * Compute edge endpoints so arrows start/end at node borders,
+ * not node centres. Unchanged from original logic.
+ */
+function edgeEndpoints(fromId, toId) {
+  const from = getNodePos(fromId);
+  const to   = getNodePos(toId);
+  if (!from || !to) return null;
+
+  const dx   = to.x - from.x, dy = to.y - from.y;
+  const dist = Math.hypot(dx, dy) || 1;
+  const ux   = dx / dist, uy = dy / dist;
+
+  const rFrom = isProcess(fromId) ? 28 : 24;
+  const rTo   = isProcess(toId)   ? 30 : 26;
+
+  return {
+    x1: from.x + ux * rFrom,
+    y1: from.y + uy * rFrom,
+    x2: to.x   - ux * rTo,
+    y2: to.y   - uy * rTo,
+  };
+}
+
+/* ─────────────────────────────────────────────────────────
+   MAIN RENDER
+───────────────────────────────────────────────────────── */
+function render() {
+  // Toggle empty-state hint
+  const hasNodes = state.processes.length + state.resources.length > 0;
+  canvasHint.style.opacity       = hasNodes ? '0' : '1';
+  canvasHint.style.pointerEvents = hasNodes ? 'none' : 'auto';
+
+  renderEdges();
+  renderNodes();
+  updateSelects();
+  updateNodeList();
+  updateStats();
+}
+
+/* ── RENDER EDGES ── */
+function renderEdges() {
+  edgesGroup.innerHTML = '';
+
+  state.edges.forEach((edge, idx) => {
+    const pts = edgeEndpoints(edge.from, edge.to);
+    if (!pts) return;
+
+    // Is this edge part of the deadlock cycle?
+    const isCycle = state.deadlocked.length > 0 &&
+                    state.deadlocked.includes(isProcess(edge.from) ? edge.from : edge.to) &&
+                    state.deadlocked.includes(isProcess(edge.to)   ? edge.to   : edge.from);
+
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', pts.x1); line.setAttribute('y1', pts.y1);
+    line.setAttribute('x2', pts.x2); line.setAttribute('y2', pts.y2);
+    line.setAttribute('marker-end', isCycle ? 'url(#arrow-cycle)' : 'url(#arrow)');
+    line.setAttribute('class',
+      `edge-line ${isCycle
+        ? 'edge-cycle'
+        : edge.type === 'alloc' ? 'edge-alloc' : 'edge-request'}`
+    );
+    line.dataset.idx = idx;
+
+    // ── Printer-themed edge tooltips ──
+    const tipText = edge.type === 'alloc'
+      ? `🖨️ ${edge.from} → 💻 ${edge.to}\nPrinting in progress 🖨️`
+      : `💻 ${edge.from} → 🖨️ ${edge.to}\nWaiting for printer ⏳`;
+
+    line.addEventListener('mouseenter', (e) => showTooltip(e, tipText));
+    line.addEventListener('mousemove',  moveTooltip);
+    line.addEventListener('mouseleave', hideTooltip);
+
+    edgesGroup.appendChild(line);
+  });
+}
+
+/* ── RENDER NODES ── */
+function renderNodes() {
+  nodesGroup.innerHTML = '';
+
+  /* ── Computers (Processes) — circles ── */
+  state.processes.forEach(p => {
+    const isDeadlocked = state.deadlocked.includes(p.id);
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.setAttribute('transform', `translate(${p.x},${p.y})`);
+    g.style.cursor = 'grab';
+
+    // Circle body
+    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    circle.setAttribute('r', 28);
+    circle.setAttribute('class',
+      `node-circle process-node${isDeadlocked ? ' node-deadlock' : ''}`);
+    if (isDeadlocked) circle.setAttribute('filter', 'url(#glow-strong)');
+
+    // Emoji icon (💻) — positioned above centre
+    const emoji = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    emoji.setAttribute('class', 'node-emoji');
+    emoji.setAttribute('y', '-7');
+    emoji.textContent = '💻';
+
+    // Label (P1, P2…) — below emoji
+    const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    label.setAttribute('class', 'node-label');
+    label.setAttribute('y', '11');
+    label.textContent = p.id;
+    if (isDeadlocked) label.setAttribute('fill', '#fb4d6d');
+
+    g.appendChild(circle);
+    g.appendChild(emoji);
+    g.appendChild(label);
+
+    makeDraggable(g, p);
+    addNodeTooltip(g, p, 'computer');
+
+    nodesGroup.appendChild(g);
+  });
+
+  /* ── Printers (Resources) — rectangles ── */
+  state.resources.forEach(r => {
+    const isDeadlocked  = state.deadlocked.includes(r.id);
+    // Is this printer actively printing (has an allocation edge)?
+    const isPrinting    = state.edges.some(e => e.from === r.id && e.type === 'alloc');
+
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.setAttribute('transform', `translate(${r.x},${r.y})`);
+    g.style.cursor = 'grab';
+
+    // Rectangle body
+    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    rect.setAttribute('x', -28); rect.setAttribute('y', -24);
+    rect.setAttribute('width', 56); rect.setAttribute('height', 48);
+    rect.setAttribute('rx', 9);    rect.setAttribute('ry', 9);
+    rect.setAttribute('class',
+      `node-circle resource-node` +
+      `${isDeadlocked ? ' node-deadlock' : ''}` +
+      `${isPrinting && !isDeadlocked ? ' resource-printing' : ''}`
+    );
+    if (isDeadlocked)              rect.setAttribute('filter', 'url(#glow-strong)');
+    else if (isPrinting)           rect.setAttribute('filter', 'url(#glow-print)');
+
+    // Emoji icon (🖨️) — positioned above centre
+    const emoji = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    emoji.setAttribute('class', 'node-emoji');
+    emoji.setAttribute('y', '-8');
+    emoji.textContent = '🖨️';
+
+    // Label (R1, R2…)
+    const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    label.setAttribute('class', 'node-label');
+    label.setAttribute('y', '9');
+    label.textContent = r.id;
+    if (isDeadlocked) label.setAttribute('fill', '#fb4d6d');
+
+    g.appendChild(rect);
+    g.appendChild(emoji);
+    g.appendChild(label);
+
+    // ── Print slots (instance dots) — below rect ──
+    const inst     = r.instances || 1;
+    const dotR     = 3.5, spacing = 9;
+    const totalW   = (inst - 1) * spacing;
+    for (let i = 0; i < inst; i++) {
+      const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      dot.setAttribute('cx', -totalW / 2 + i * spacing);
+      dot.setAttribute('cy', 20);
+      dot.setAttribute('r', dotR);
+      dot.setAttribute('class', 'instance-dot');
+      g.appendChild(dot);
+    }
+
+    // ── "Paper coming out" animation when actively printing ──
+    if (isPrinting && !isDeadlocked) {
+      const paper = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      paper.setAttribute('x', -8);  paper.setAttribute('y', -28);
+      paper.setAttribute('width', 16); paper.setAttribute('height', 10);
+      paper.setAttribute('rx', 2); paper.setAttribute('ry', 2);
+      paper.setAttribute('class', 'print-paper');
+      g.appendChild(paper);
+    }
+
+    makeDraggable(g, r);
+    addNodeTooltip(g, r, 'printer');
+
+    nodesGroup.appendChild(g);
+  });
+}
+
+/* ─────────────────────────────────────────────────────────
+   DRAG AND DROP — same logic, unchanged
+───────────────────────────────────────────────────────── */
+function makeDraggable(g, nodeData) {
+  let dragging = false, startX, startY, origX, origY;
+
+  g.addEventListener('mousedown', (e) => {
+    dragging = true;
+    startX = e.clientX; startY = e.clientY;
+    origX  = nodeData.x; origY = nodeData.y;
+    g.style.cursor = 'grabbing';
+    e.preventDefault();
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (!dragging) return;
+    const svgRect = svg.getBoundingClientRect();
+    const scaleX  = (svg.viewBox.baseVal.width  || svgRect.width)  / svgRect.width;
+    const scaleY  = (svg.viewBox.baseVal.height || svgRect.height) / svgRect.height;
+    nodeData.x = origX + (e.clientX - startX) * scaleX;
+    nodeData.y = origY + (e.clientY - startY) * scaleY;
+    renderEdges();
+    g.setAttribute('transform', `translate(${nodeData.x},${nodeData.y})`);
+  });
+
+  window.addEventListener('mouseup', () => {
+    if (dragging) { dragging = false; g.style.cursor = 'grab'; }
+  });
+}
+
+/* ─────────────────────────────────────────────────────────
+   TOOLTIP SYSTEM
+───────────────────────────────────────────────────────── */
+function addNodeTooltip(g, nodeData, type) {
+  g.addEventListener('mouseenter', (e) => {
+    let info = '';
+    if (type === 'computer') {
+      const allocatedFrom = state.edges
+        .filter(ed => ed.to === nodeData.id && ed.type === 'alloc')
+        .map(ed => ed.from).join(', ') || 'none';
+      const waitingFor = state.edges
+        .filter(ed => ed.from === nodeData.id && ed.type === 'request')
+        .map(ed => ed.to).join(', ') || 'none';
+      info =
+        `💻 Computer: ${nodeData.id}\n` +
+        `🖨️ Printing on: ${allocatedFrom}\n` +
+        `⏳ Waiting for: ${waitingFor}`;
+    } else {
+      const assignedTo = state.edges
+        .filter(ed => ed.from === nodeData.id && ed.type === 'alloc')
+        .map(ed => ed.to).join(', ') || 'idle';
+      const requestedBy = state.edges
+        .filter(ed => ed.to === nodeData.id && ed.type === 'request')
+        .map(ed => ed.from).join(', ') || 'none';
+      const status = assignedTo !== 'idle' ? '🖨️ Printing...' : '💤 Idle';
+      info =
+        `🖨️ Printer: ${nodeData.id}\n` +
+        `📋 Slots: ${nodeData.instances}\n` +
+        `✅ Assigned to: ${assignedTo}\n` +
+        `⏳ Queued: ${requestedBy}\n` +
+        `Status: ${status}`;
+    }
+    showTooltip(e, info);
+  });
+  g.addEventListener('mousemove',  moveTooltip);
+  g.addEventListener('mouseleave', hideTooltip);
+}
+
+function showTooltip(e, text) {
+  tooltip.innerHTML = text.replace(/\n/g, '<br/>');
+  tooltip.classList.add('visible');
+  moveTooltip(e);
+}
+function moveTooltip(e) {
+  const wrapper = document.querySelector('.canvas-wrapper').getBoundingClientRect();
+  let tx = e.clientX - wrapper.left + 14;
+  let ty = e.clientY - wrapper.top  + 14;
+  // Keep inside wrapper bounds
+  if (tx + 220 > wrapper.width)  tx = e.clientX - wrapper.left - 230;
+  if (ty + 100 > wrapper.height) ty = e.clientY - wrapper.top  - 110;
+  tooltip.style.left = tx + 'px';
+  tooltip.style.top  = ty + 'px';
+}
+function hideTooltip() { tooltip.classList.remove('visible'); }
+
+/* ─────────────────────────────────────────────────────────
+   SVG VIEWBOX — auto-resize with canvas
+───────────────────────────────────────────────────────── */
+function updateViewBox() {
+  const wrapper = document.querySelector('.canvas-wrapper');
+  const { width, height } = wrapper.getBoundingClientRect();
+  svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+}
+window.addEventListener('resize', () => { updateViewBox(); render(); });
+updateViewBox();
+
+/* ─────────────────────────────────────────────────────────
+   NODE SPAWN POSITIONS — circular spread
+───────────────────────────────────────────────────────── */
+function getSpawnPosition(index, total) {
+  const wrapper = document.querySelector('.canvas-wrapper');
+  const { width, height } = wrapper.getBoundingClientRect();
+  const cx = width / 2, cy = height / 2;
+  const radius = Math.min(width, height) * 0.34;
+  if (total <= 1) return { x: cx, y: cy };
+  const angle = (index / total) * Math.PI * 2 - Math.PI / 2;
+  return {
+    x: cx + radius * Math.cos(angle),
+    y: cy + radius * Math.sin(angle),
+  };
+}
+
+/* ─────────────────────────────────────────────────────────
+   ADD NODES — Computers + Printers
+───────────────────────────────────────────────────────── */
+document.getElementById('addProcessBtn').addEventListener('click', () => {
+  state.processCount++;
+  const id  = `P${state.processCount}`;
+  const pos = getSpawnPosition(state.processes.length, state.processes.length + 1);
+  state.processes.push({ id, x: pos.x, y: pos.y });
+  log(`💻 Computer ${id} connected to network`, 'accent');
+  clearDeadlock();
+  render();
+});
+
+document.getElementById('addResourceBtn').addEventListener('click', () => {
+  state.resourceCount++;
+  const id        = `R${state.resourceCount}`;
+  const instances = parseInt(document.getElementById('resourceInstances').value) || 1;
+  const pos       = getSpawnPosition(state.resources.length, state.resources.length + 1);
+  state.resources.push({ id, x: pos.x, y: pos.y, instances });
+  log(`🖨️ Printer ${id} added (${instances} print slot${instances > 1 ? 's' : ''})`, 'accent');
+  clearDeadlock();
+  render();
+});
+
+function removeNode(id) {
+  if (isProcess(id)) {
+    state.processes = state.processes.filter(p => p.id !== id);
+  } else {
+    state.resources = state.resources.filter(r => r.id !== id);
+  }
+  state.edges = state.edges.filter(e => e.from !== id && e.to !== id);
+  const label = isProcess(id) ? `💻 Computer ${id}` : `🖨️ Printer ${id}`;
+  log(`${label} removed — related connections cleared`, 'warn');
+  clearDeadlock();
+  render();
+}
+
+/* ─────────────────────────────────────────────────────────
+   ADD EDGE — link computer ↔ printer
+───────────────────────────────────────────────────────── */
+document.getElementById('addEdgeBtn').addEventListener('click', () => {
+  const from = edgeFrom.value;
+  const to   = edgeTo.value;
+
+  if (!from || !to || from === to)
+    return alert('Please select two different devices to connect.');
+
+  if (isProcess(from) && isProcess(to))
+    return alert('You cannot link two computers directly.\nA computer must connect to a printer.');
+
+  if (isResource(from) && isResource(to))
+    return alert('You cannot link two printers directly.\nA printer must connect to a computer.');
+
+  const type = isResource(from) ? 'alloc' : 'request';
+
+  if (state.edges.find(e => e.from === from && e.to === to))
+    return alert('This connection already exists.');
+
+  // Check allocation limit for printers
+  if (type === 'alloc') {
+    const res       = state.resources.find(r => r.id === from);
+    const allocated = state.edges.filter(e => e.from === from && e.type === 'alloc').length;
+    if (allocated >= res.instances) {
+      return alert(
+        `Printer ${from} has ${res.instances} slot(s) — all currently in use.\n` +
+        `Free a slot or increase the printer's capacity.`
+      );
+    }
+  }
+
+  state.edges.push({ from, to, type });
+  const msg = type === 'alloc'
+    ? `🖨️ ${from} is now printing for 💻 ${to}`
+    : `💻 ${from} is waiting for 🖨️ ${to}`;
+  log(msg, 'info');
+  clearDeadlock();
+  render();
+});
+
+/* ─────────────────────────────────────────────────────────
+   SELECT DROPDOWNS — keep in sync with node list
+───────────────────────────────────────────────────────── */
+function updateSelects() {
+  const allNodes = [
+    ...state.processes.map(p => p.id),
+    ...state.resources.map(r => r.id),
+  ];
+  [edgeFrom, edgeTo].forEach(sel => {
+    const prev = sel.value;
+    sel.innerHTML = allNodes
+      .map(id => {
+        const label = isProcess(id) ? `💻 ${id}` : `🖨️ ${id}`;
+        return `<option value="${id}">${label}</option>`;
+      })
+      .join('');
+    if (allNodes.includes(prev)) sel.value = prev;
+  });
+}
+
+/* ── Device list (sidebar) ── */
+function updateNodeList() {
+  nodeListEl.innerHTML = '';
+  [...state.processes, ...state.resources].forEach(n => {
+    const type = isProcess(n.id) ? 'process' : 'resource';
+    const icon = isProcess(n.id) ? '💻' : '🖨️';
+    const div  = document.createElement('div');
+    div.className = `node-item ${type}-item`;
+    div.innerHTML = `
+      <span>${icon} ${n.id}${isResource(n.id) ? ` <small>(×${n.instances})</small>` : ''}</span>
+      <button class="node-del" data-id="${n.id}" title="Remove device">✕</button>
+    `;
+    nodeListEl.appendChild(div);
+  });
+
+  nodeListEl.querySelectorAll('.node-del').forEach(btn => {
+    btn.addEventListener('click', () => removeNode(btn.dataset.id));
+  });
+}
+
+/* ─────────────────────────────────────────────────────────
+   DEADLOCK DETECTION — DFS cycle detection (UNCHANGED)
+   Processes = Computers | Resources = Printers
+───────────────────────────────────────────────────────── */
+
+/** Build adjacency list from current edge set */
+function buildAdjacency() {
+  const adj = {};
+  [...state.processes, ...state.resources].forEach(n => (adj[n.id] = []));
+  state.edges.forEach(e => { adj[e.from].push(e.to); });
+  return adj;
+}
+
+/**
+ * Find all directed cycles using DFS.
+ * Returns array of cycles (each = array of node IDs).
+ * Logic unchanged from original.
+ */
+function findCycles() {
+  const adj      = buildAdjacency();
+  const all      = [
+    ...state.processes.map(p => p.id),
+    ...state.resources.map(r => r.id),
+  ];
+  const visited  = new Set();
+  const recStack = new Set();
+  const cycles   = [];
+
+  function dfs(node, path) {
+    visited.add(node);
+    recStack.add(node);
+    path.push(node);
+
+    for (const neighbor of (adj[node] || [])) {
+      if (!visited.has(neighbor)) {
+        dfs(neighbor, path);
+      } else if (recStack.has(neighbor)) {
+        cycles.push(path.slice(path.indexOf(neighbor)));
+      }
+    }
+
+    path.pop();
+    recStack.delete(node);
+  }
+
+  all.forEach(node => { if (!visited.has(node)) dfs(node, []); });
+  return cycles;
+}
+
+/** Run full deadlock detection and update UI */
+function detectDeadlock() {
+  const cycles = findCycles();
+  clearDeadlock();
+
+  if (cycles.length === 0) {
+    // ── No jam ──
+    setStatus('safe', '💚', '💚 All print jobs completed successfully!');
+    log('✅ No circular wait found — print queue is clear!', 'ok');
+    deadlockList.innerHTML = '<span class="muted">✅ No jams — all printers running smoothly</span>';
+    resolutionSection.style.display = 'none';
+    return;
+  }
+
+  // ── Collect jammed computers (processes) ──
+  const deadlockedSet = new Set();
+  cycles.forEach(cycle => {
+    cycle.forEach(id => { if (isProcess(id)) deadlockedSet.add(id); });
+  });
+
+  // ── Single-instance vs multi-instance check ──
+  const cycleNodes        = new Set(cycles.flat());
+  const hasMultiInstance  = state.resources.some(
+    r => cycleNodes.has(r.id) && r.instances > 1
+  );
+
+  if (hasMultiInstance) {
+    setStatus('warn', '🟡', '🟡 Printer queue congestion detected...');
+    log('⚠️ Cycle with multi-slot printer — possible jam (not guaranteed)', 'warn');
+    log(`Computers involved: ${[...deadlockedSet].join(', ')}`, 'warn');
+  } else {
+    setStatus('deadlock', '🔴', '🔴 Printers are jammed! Jobs are stuck in a loop!');
+    log('🚨 PRINTER JAM! Circular wait confirmed — system halted', 'danger');
+    log(`Jammed computers: ${[...deadlockedSet].join(', ')}`, 'danger');
+  }
+
+  state.deadlocked = [...deadlockedSet];
+
+  // ── Jammed computers list ──
+  deadlockList.innerHTML = '';
+  state.deadlocked.forEach(id => {
+    const tag = document.createElement('div');
+    tag.className = 'deadlock-tag';
+    tag.textContent = `${id} — stuck in print loop`;
+    deadlockList.appendChild(tag);
+  });
+
+  // ── Show resolution panel ──
+  resolutionSection.style.display = 'block';
+  resolveTarget.innerHTML = state.deadlocked
+    .map(id => `<option value="${id}">💻 ${id}</option>`)
+    .join('');
+
+  render(); // re-render to show red highlights + print animations
+}
+
+function clearDeadlock() {
+  state.deadlocked = [];
+  setStatus('idle', '💤', 'Press "Detect Printer Jam" to analyse the print queue');
+  deadlockList.innerHTML = '<span class="muted">✅ No jams detected yet</span>';
+  resolutionSection.style.display = 'none';
+}
+
+function setStatus(type, icon, text) {
+  statusBanner.setAttribute('data-status', type);
+  statusIcon.textContent = icon;
+  statusText.textContent = text;
+}
+
+document.getElementById('detectBtn').addEventListener('click', detectDeadlock);
+
+/* ─────────────────────────────────────────────────────────
+   DEADLOCK RESOLUTION
+───────────────────────────────────────────────────────── */
+
+/** Kill Job: remove the computer entirely */
+document.getElementById('terminateBtn').addEventListener('click', () => {
+  const target = resolveTarget.value;
+  if (!target) return;
+  log(`✕ Job killed — 💻 ${target} forcibly shut down and removed`, 'warn');
+  removeNode(target);
+  detectDeadlock();
+});
+
+/** Preempt: reclaim all printers assigned to this computer */
+document.getElementById('preemptBtn').addEventListener('click', () => {
+  const target  = resolveTarget.value;
+  if (!target) return;
+  const removed = state.edges.filter(e => e.to === target && e.type === 'alloc');
+  state.edges   = state.edges.filter(e => !(e.to === target && e.type === 'alloc'));
+  log(`⇥ Preempted: ${removed.length} printer(s) reclaimed from 💻 ${target}`, 'warn');
+  removed.forEach(e => log(`  ↳ 🖨️ ${e.from} returned to pool`, 'info'));
+  detectDeadlock();
+  render();
+});
+
+/* ─────────────────────────────────────────────────────────
+   RESET — clear everything
+───────────────────────────────────────────────────────── */
+document.getElementById('resetBtn').addEventListener('click', () => {
+  state.processes     = [];
+  state.resources     = [];
+  state.edges         = [];
+  state.deadlocked    = [];
+  state.processCount  = 0;
+  state.resourceCount = 0;
+  clearDeadlock();
+  log('⟳ Print queue cleared — all devices removed', 'info');
+  render();
+});
+
+/* ─────────────────────────────────────────────────────────
+   RANDOM SCENARIO GENERATOR
+   Always produces a deadlock (for demo purposes)
+───────────────────────────────────────────────────────── */
+document.getElementById('randomBtn').addEventListener('click', () => {
+  // Reset state
+  state.processes = []; state.resources = [];
+  state.edges = []; state.deadlocked = [];
+  state.processCount = 0; state.resourceCount = 0;
+
+  updateViewBox();
+  const wrapper = document.querySelector('.canvas-wrapper');
+  const { width, height } = wrapper.getBoundingClientRect();
+
+  const numP = 3 + Math.floor(Math.random() * 2); // 3–4 computers
+  const numR = 3 + Math.floor(Math.random() * 2); // 3–4 printers
+
+  // Computers — outer ring
+  for (let i = 0; i < numP; i++) {
+    state.processCount++;
+    const angle = (i / numP) * Math.PI * 2 - Math.PI / 2;
+    state.processes.push({
+      id: `P${state.processCount}`,
+      x:  width  / 2 + Math.cos(angle) * width  * 0.3,
+      y:  height / 2 + Math.sin(angle) * height * 0.3,
+    });
+  }
+
+  // Printers — inner ring
+  for (let i = 0; i < numR; i++) {
+    state.resourceCount++;
+    const angle = (i / numR) * Math.PI * 2;
+    const inst  = Math.random() < 0.3 ? 2 : 1;
+    state.resources.push({
+      id: `R${state.resourceCount}`,
+      x:  width  / 2 + Math.cos(angle) * width  * 0.14,
+      y:  height / 2 + Math.sin(angle) * height * 0.14,
+      instances: inst,
+    });
+  }
+
+  const pIds = state.processes.map(p => p.id);
+  const rIds = state.resources.map(r => r.id);
+
+  // Create circular wait: P1→R1, R1→P2, P2→R2, R2→P1
+  state.edges.push({ from: pIds[0], to: rIds[0], type: 'request' }); // P1 wants R1
+  state.edges.push({ from: rIds[0], to: pIds[1], type: 'alloc'   }); // R1 printing for P2
+  state.edges.push({ from: pIds[1], to: rIds[1], type: 'request' }); // P2 wants R2
+  state.edges.push({ from: rIds[1], to: pIds[0], type: 'alloc'   }); // R2 printing for P1
+
+  // Extra non-cycle edge (P3 with R3)
+  if (numP >= 3 && numR >= 3) {
+    state.edges.push({ from: pIds[2], to: rIds[2], type: 'request' });
+    state.edges.push({ from: rIds[2], to: pIds[2], type: 'alloc'   });
+  }
+
+  log('🎲 Random print scenario loaded (deadlock included!)', 'accent');
+  render();
+  setTimeout(detectDeadlock, 420);
+});
+
+/* ─────────────────────────────────────────────────────────
+   STEP-BY-STEP TRACE — DFS walk visualised in modal
+   Logic unchanged; microcopy updated to printer context
+───────────────────────────────────────────────────────── */
+let stepState = null;
+
+document.getElementById('stepBtn').addEventListener('click', () => {
+  if (state.processes.length === 0)
+    return alert('Add some computers and printers first!');
+
+  const adj   = buildAdjacency();
+  const all   = [
+    ...state.processes.map(p => p.id),
+    ...state.resources.map(r => r.id),
+  ];
+
+  const steps = [];
+  steps.push({
+    text: `<span class="step-highlight">🔍 Starting print-job trace (DFS)...</span><br/>` +
+          `Devices in network: ${all.map(id =>
+            isProcess(id) ? `💻${id}` : `🖨️${id}`
+          ).join(', ')}`,
+  });
+
+  const visited    = new Set();
+  const recStack   = new Set();
+  const foundCycles = [];
+
+  function dfsStep(node, path) {
+    visited.add(node);
+    recStack.add(node);
+    path.push(node);
+
+    const nodeLabel = isProcess(node) ? `💻 ${node}` : `🖨️ ${node}`;
+    steps.push({
+      text: `Tracing <span class="step-highlight">${nodeLabel}</span> ` +
+            `| path: ${path.map(id => isProcess(id) ? `💻${id}` : `🖨️${id}`).join(' → ')}`,
+    });
+
+    for (const nb of (adj[node] || [])) {
+      const nbLabel = isProcess(nb) ? `💻 ${nb}` : `🖨️ ${nb}`;
+      if (!visited.has(nb)) {
+        steps.push({
+          text: `&nbsp;&nbsp;Following connection: ` +
+                `<span class="step-highlight">${nodeLabel} → ${nbLabel}</span> (not yet visited)`,
+        });
+        dfsStep(nb, path);
+      } else if (recStack.has(nb)) {
+        const cycle = path.slice(path.indexOf(nb));
+        foundCycles.push(cycle);
+        steps.push({
+          text: `&nbsp;&nbsp;🚨 Back-edge found: <span class="step-highlight">${nodeLabel} → ${nbLabel}</span><br/>` +
+                `&nbsp;&nbsp;<span class="step-cycle">CIRCULAR WAIT: ` +
+                `${cycle.map(id => isProcess(id) ? `💻${id}` : `🖨️${id}`).join(' → ')} → ${nbLabel}</span><br/>` +
+                `&nbsp;&nbsp;Print jobs are stuck in a loop — this is a JAM!`,
+        });
+      } else {
+        steps.push({
+          text: `&nbsp;&nbsp;Skipping <span class="step-highlight">${nodeLabel} → ${nbLabel}</span> ` +
+                `— already visited (no new cycle)`,
+        });
+      }
+    }
+
+    path.pop();
+    recStack.delete(node);
+    steps.push({
+      text: `Backtracking from <span class="step-highlight">${nodeLabel}</span>`,
+    });
+  }
+
+  all.forEach(node => { if (!visited.has(node)) dfsStep(node, []); });
+
+  if (foundCycles.length === 0) {
+    steps.push({
+      text: `<span class="step-ok">✅ No circular wait found — all print jobs can complete!</span>`,
+    });
+  } else {
+    steps.push({
+      text: `<span class="step-cycle">🚨 ${foundCycles.length} circular wait(s) detected — printer jam confirmed!</span>`,
+    });
+  }
+
+  // Show modal
+  stepState = { steps, index: 0, total: steps.length };
+  stepContent.innerHTML = steps[0].text;
+  updateStepProgress();
+  stepModal.style.display = 'flex';
+});
+
+/** Advance one step */
+document.getElementById('nextStepBtn').addEventListener('click', () => {
+  if (!stepState) return;
+  stepState.index++;
+  if (stepState.index >= stepState.steps.length) {
+    stepState.index = stepState.steps.length - 1;
+    document.getElementById('nextStepBtn').textContent = 'Done ✓';
+  }
+  stepContent.innerHTML = stepState.steps[stepState.index].text;
+  updateStepProgress();
+});
+
+function updateStepProgress() {
+  if (!stepState) return;
+  const pct = ((stepState.index + 1) / stepState.total) * 100;
+  document.getElementById('stepProgressBar').style.width = pct + '%';
+}
+
+document.getElementById('closeStepBtn').addEventListener('click', () => {
+  stepModal.style.display = 'none';
+  stepState = null;
+  document.getElementById('nextStepBtn').textContent = 'Next Step ▶';
+  document.getElementById('stepProgressBar').style.width = '0%';
+});
+
+/* ─────────────────────────────────────────────────────────
+   INITIALISE
+───────────────────────────────────────────────────────── */
+render();
+log('🖨️ PrinterSync ready — welcome, Aarna! Start adding devices to simulate.', 'ok');
